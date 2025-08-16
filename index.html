@@ -453,18 +453,41 @@
                 return;
             }
             
-            document.getElementById('amount').value = total;
+            // Sätt belopp med trigger för change-event
+            const amountField = document.getElementById('amount');
+            amountField.value = total;
+            amountField.dispatchEvent(new Event('change'));
+            amountField.dispatchEvent(new Event('input'));
             
             // Skapa automatiskt meddelande baserat på beställning
             const orderText = currentOrder.map(item => item.name).join(', ');
             const message = `BIK Karlskoga - ${orderText}`;
-            document.getElementById('message').value = message.substring(0, 70); // Max 70 tecken
+            const messageField = document.getElementById('message');
+            messageField.value = message.substring(0, 70); // Max 70 tecken
+            messageField.dispatchEvent(new Event('change'));
+            messageField.dispatchEvent(new Event('input'));
             
-            showStatus(`Belopp ${total} kr överfört till QR-generator!`, 'success');
+            // Visa bekräftelse
+            showStatus(`✅ Belopp ${total} kr överfört till QR-generator!`, 'success');
             
-            // Scrolla till QR-sektionen på mobil
+            // På mobil - scrolla till QR-sektionen OCH generera QR automatiskt
             if (window.innerWidth <= 768) {
-                document.querySelector('.section:last-child').scrollIntoView({ behavior: 'smooth' });
+                setTimeout(() => {
+                    document.querySelector('.section:last-child').scrollIntoView({ 
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                    
+                    // Generera QR automatiskt på mobil för smidigare flöde
+                    setTimeout(() => {
+                        generateQR();
+                    }, 800);
+                }, 300);
+            } else {
+                // På desktop - bara fokusera på QR-sektionen
+                setTimeout(() => {
+                    document.getElementById('message').focus();
+                }, 300);
             }
         }
         
