@@ -491,6 +491,104 @@
                 font-size: 12px;
             }
         }
+        
+        /* FULLSKÄRMS QR-OVERLAY */
+        .qr-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            cursor: pointer;
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+        }
+        
+        .qr-overlay-content {
+            text-align: center;
+            padding: 20px;
+            color: white;
+            max-width: 90%;
+            max-height: 90%;
+        }
+        
+        .qr-overlay h2 {
+            margin: 0 0 20px 0;
+            color: white;
+            font-size: 1.5em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+        
+        @media (min-width: 769px) {
+            .qr-overlay h2 {
+                font-size: 2em;
+                margin: 0 0 30px 0;
+            }
+        }
+        
+        .qr-overlay-image {
+            max-width: 100%;
+            max-height: 60vh;
+            width: auto;
+            height: auto;
+            border: 3px solid white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            background: white;
+            padding: 20px;
+        }
+        
+        @media (min-width: 769px) {
+            .qr-overlay-image {
+                max-height: 70vh;
+                padding: 30px;
+            }
+        }
+        
+        .qr-overlay-text {
+            margin-top: 20px;
+            font-size: 1.1em;
+            opacity: 0.9;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+        }
+        
+        @media (min-width: 769px) {
+            .qr-overlay-text {
+                font-size: 1.3em;
+                margin-top: 30px;
+            }
+        }
+        
+        .qr-overlay-close {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            color: white;
+            font-size: 2em;
+            font-weight: bold;
+            cursor: pointer;
+            background: rgba(0,0,0,0.5);
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border: 2px solid white;
+        }
+        
+        @media (min-width: 769px) {
+            .qr-overlay-close {
+                font-size: 2.5em;
+                width: 60px;
+                height: 60px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -603,13 +701,26 @@
                 </div>
                 <div class="swish-data" id="swishData"></div>
                 <button class="btn btn-secondary" id="downloadBtn" style="margin-top: 15px;">
-                    📱 Visa/Spara QR-kod
+                    📱 Visa QR Fullskärm
                 </button>
             </div>
             
             <div class="debug-info" id="debugInfo" style="display: none;">
                 <strong>Debug info:</strong><br>
                 <span id="debugText"></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- FULLSKÄRMS QR-OVERLAY -->
+    <div class="qr-overlay" id="qrOverlay">
+        <div class="qr-overlay-close" id="qrOverlayClose">×</div>
+        <div class="qr-overlay-content">
+            <h2>🏒 BIK Karlskoga</h2>
+            <img id="qrOverlayImage" class="qr-overlay-image" alt="Swish QR-kod">
+            <div class="qr-overlay-text">
+                <p><strong>Scanna med Swish-appen</strong></p>
+                <p>Tryck var som helst för att stänga</p>
             </div>
         </div>
     </div>
@@ -730,8 +841,13 @@
                     document.querySelector('.section:last-child').scrollIntoView({ 
                         behavior: 'smooth' 
                     });
+                    // På mobil - automatisk QR-generering OCH fullskärmsvisning
                     setTimeout(() => {
                         generateQR();
+                        // Vänta lite och visa sedan QR i fullskärm automatiskt
+                        setTimeout(() => {
+                            showQRFullscreen();
+                        }, 1500);
                     }, 800);
                 }, 300);
             }
@@ -811,8 +927,8 @@
             }
         }
         
-        // Visa/spara QR-kod (mobilanpassat)
-        function showQR() {
+        // Visa QR-kod i fullskärm
+        function showQRFullscreen() {
             const qrImage = document.getElementById('qrImage');
             
             if (!qrImage.src || qrImage.style.display === 'none') {
@@ -820,57 +936,33 @@
                 return;
             }
             
-            debug('Visar QR-kod i nytt fönster');
+            debug('Visar QR-kod i fullskärm');
             
-            // Öppna i nytt fönster (fungerar på alla enheter)
-            const newWindow = window.open('', '_blank');
-            newWindow.document.write(`
-                <!DOCTYPE html>
-                <html>
-                <head>
-                    <title>BIK Karlskoga Swish QR</title>
-                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                    <style>
-                        body { 
-                            margin: 0; 
-                            padding: 20px; 
-                            text-align: center; 
-                            background: #f0f0f0;
-                            font-family: Arial, sans-serif;
-                        }
-                        img { 
-                            max-width: 90%; 
-                            margin: 20px 0;
-                            border: 2px solid #ddd;
-                            border-radius: 10px;
-                            background: white;
-                            padding: 10px;
-                        }
-                        h2 { color: #1e3c72; }
-                        p { color: #666; margin-top: 20px; }
-                        .instructions {
-                            background: white;
-                            padding: 15px;
-                            border-radius: 8px;
-                            margin: 20px;
-                            border: 1px solid #ddd;
-                        }
-                    </style>
-                </head>
-                <body>
-                    <h2>🏒 BIK Karlskoga</h2>
-                    <h3>Swish QR-kod</h3>
-                    <img src="${qrImage.src}" alt="Swish QR-kod">
-                    <div class="instructions">
-                        <p><strong>För att spara bilden:</strong></p>
-                        <p>📱 Håll ned bilden och välj "Spara bild"</p>
-                        <p>💳 Eller scanna direkt med Swish-appen</p>
-                    </div>
-                </body>
-                </html>
-            `);
+            // Kopiera QR-bilden till overlay
+            const overlayImage = document.getElementById('qrOverlayImage');
+            overlayImage.src = qrImage.src;
             
-            showStatus('📱 QR-kod öppnad i nytt fönster', 'success');
+            // Visa overlay
+            const overlay = document.getElementById('qrOverlay');
+            overlay.style.display = 'flex';
+            
+            // Förhindra scrollning i bakgrunden
+            document.body.style.overflow = 'hidden';
+            
+            showStatus('📱 QR-kod i fullskärm - tryck för att stänga', 'success');
+        }
+        
+        // Stäng QR-fullskärm
+        function closeQRFullscreen() {
+            debug('Stänger QR-fullskärm');
+            
+            const overlay = document.getElementById('qrOverlay');
+            overlay.style.display = 'none';
+            
+            // Återställ scrollning
+            document.body.style.overflow = 'auto';
+            
+            showStatus('QR-fullskärm stängd', 'success');
         }
         
         // Event listeners (förenklat)
@@ -898,7 +990,21 @@
             document.getElementById('transferBtn').addEventListener('click', transferToQR);
             document.getElementById('clearBtn').addEventListener('click', clearOrder);
             document.getElementById('generateBtn').addEventListener('click', generateQR);
-            document.getElementById('downloadBtn').addEventListener('click', showQR);
+            document.getElementById('downloadBtn').addEventListener('click', showQRFullscreen);
+            
+            // QR-overlay event listeners
+            document.getElementById('qrOverlay').addEventListener('click', closeQRFullscreen);
+            document.getElementById('qrOverlayClose').addEventListener('click', function(e) {
+                e.stopPropagation(); // Förhindra dubbel-triggering
+                closeQRFullscreen();
+            });
+            
+            // Escape-tangent för att stänga overlay
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape' && document.getElementById('qrOverlay').style.display === 'flex') {
+                    closeQRFullscreen();
+                }
+            });
             
             // Enter key support
             document.getElementById('amount').addEventListener('keypress', function(e) {
