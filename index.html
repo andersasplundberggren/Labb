@@ -578,7 +578,7 @@
     <div class="header">
         <img src="https://sportality.cdn.s8y.se/team-logos/bik1_bik.svg" alt="BIK Karlskoga" class="logo">
         <h1>BIK Karlskoga</h1>
-        <p>V2 Café Kassa & Swish Betalning</p>
+        <p>V3 Café Kassa & Swish Betalning</p>
     </div>
 
     <div class="main-container">
@@ -782,28 +782,37 @@
                 return;
             }
             
-            debug(`Överför ${total}kr till QR`);
-            
-            // Sätt belopp
+            // Sätt beloppet med flera metoder för kompatibilitet
             const amountField = document.getElementById('amount');
             amountField.value = total;
+            amountField.setAttribute('value', total);
             
-            // Skapa meddelande
-            const orderText = currentOrder.map(item => item.name).join(', ');
-            const message = `BIK Karlskoga - ${orderText}`;
-            const messageField = document.getElementById('message');
-            messageField.value = message.substring(0, 70);
+            // Trigga events för att säkerställa att värdet registreras
+            amountField.dispatchEvent(new Event('input', { bubbles: true }));
+            amountField.dispatchEvent(new Event('change', { bubbles: true }));
             
-            showStatus(`✅ Belopp ${total} kr överfört!`, 'success');
+            // Verifiera att värdet faktiskt sattes
+            setTimeout(() => {
+                if (amountField.value != total) {
+                    amountField.value = total;
+                    console.log('Korrigerade belopp-värde:', total);
+                }
+            }, 100);
             
-            // På mobil - automatisk QR-generering
+            showStatus(`✅ Belopp ${total} kr överfört till QR-generator!`, 'success');
+            
+            // På mobil - automatisk QR-generering OCH fullskärmsvisning
             if (window.innerWidth <= 768) {
                 setTimeout(() => {
                     document.querySelector('.section:last-child').scrollIntoView({ 
                         behavior: 'smooth' 
                     });
-                    // På mobil - automatisk QR-generering OCH fullskärmsvisning
                     setTimeout(() => {
+                        // Dubbelkolla att beloppet finns innan QR-generering
+                        const currentAmount = document.getElementById('amount').value;
+                        if (!currentAmount || currentAmount == 0) {
+                            document.getElementById('amount').value = total;
+                        }
                         generateQR();
                         // Vänta lite och visa sedan QR i fullskärm automatiskt
                         setTimeout(() => {
@@ -811,10 +820,15 @@
                         }, 1500);
                     }, 800);
                 }, 300);
+            } else {
+                // På desktop - fokusera på meddelande-fältet
+                setTimeout(() => {
+                    document.getElementById('message').focus();
+                }, 300);
             }
         }
         
-        // Generera QR-kod (enkel metod utan externa bibliotek)
+        // Generera QR-kod
         function generateQR() {
             const swishNumber = '1234701777';
             const amount = document.getElementById('amount').value.trim();
@@ -840,7 +854,7 @@
                 const isMobile = window.innerWidth <= 768;
                 const qrSize = isMobile ? 250 : 300;
                 
-                // Skapa QR-kod via extern service (fungerar alltid)
+                // Skapa QR-kod via extern service
                 const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=${qrSize}x${qrSize}&format=png&data=${encodeURIComponent(swishString)}`;
                 
                 const qrImage = document.getElementById('qrImage');
@@ -913,7 +927,7 @@
             showStatus('QR-fullskärm stängd', 'success');
         }
         
-        // Event listeners (förenklat)
+        // Event listeners
         document.addEventListener('DOMContentLoaded', function() {
             // Menu items
             document.querySelectorAll('.menu-item').forEach(item => {
@@ -941,7 +955,7 @@
             // QR-overlay event listeners
             document.getElementById('qrOverlay').addEventListener('click', closeQRFullscreen);
             document.getElementById('qrOverlayClose').addEventListener('click', function(e) {
-                e.stopPropagation(); // Förhindra dubbel-triggering
+                e.stopPropagation();
                 closeQRFullscreen();
             });
             
