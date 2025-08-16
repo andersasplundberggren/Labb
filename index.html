@@ -388,6 +388,9 @@
             border-radius: 10px;
             background-color: #fafafa;
             display: none;
+            width: 100%;
+            box-sizing: border-box;
+            overflow: hidden;
         }
         
         @media (min-width: 769px) {
@@ -399,19 +402,28 @@
         
         .qr-image {
             max-width: 100%;
-            width: 250px;
-            height: 250px;
+            height: auto;
+            width: auto;
+            max-height: 250px;
             border: 1px solid #ddd;
             border-radius: 5px;
-            margin: 15px 0;
+            margin: 15px auto;
+            display: block;
         }
         
         @media (min-width: 769px) {
             .qr-image {
-                width: 300px;
-                height: 300px;
-                margin: 20px 0;
+                max-height: 300px;
+                margin: 20px auto;
             }
+        }
+        
+        #qrcode {
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
         }
         
         .status {
@@ -751,16 +763,38 @@
                     ${swishString}
                 `;
                 
-                // Skapa QR-kod via extern service (fungerar alltid)
-                const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&format=png&data=${encodeURIComponent(swishString)}`;
+                // Bestäm QR-kod storlek baserat på skärmstorlek
+                const isMobile = window.innerWidth <= 768;
+                const qrSize = isMobile ? 250 : 300;
                 
-                debug(`QR API URL: ${qrApiUrl}`);
+                // Skapa QR-kod via extern service (fungerar alltid)
+                const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=${qrSize}x${qrSize}&format=png&data=${encodeURIComponent(swishString)}`;
+                
+                debug(`QR API URL: ${qrApiUrl} (storlek: ${qrSize}x${qrSize})`);
                 
                 const qrImage = document.getElementById('qrImage');
+                
+                // Reset image properties för responsivitet
+                qrImage.style.maxWidth = '100%';
+                qrImage.style.height = 'auto';
+                qrImage.style.width = 'auto';
+                qrImage.style.display = 'none';
+                
                 qrImage.onload = function() {
+                    // Säkerställ responsivitet efter laddning
+                    this.style.display = 'block';
+                    this.style.maxWidth = '100%';
+                    this.style.height = 'auto';
+                    this.style.width = 'auto';
+                    
                     document.getElementById('qrContainer').style.display = 'block';
                     showStatus(`✅ QR-kod för ${formattedAmount} SEK klar!`, 'success');
-                    debug('QR-kod laddad framgångsrikt');
+                    debug('QR-kod laddad framgångsrikt och responsivitet återställd');
+                    
+                    // Força en re-layout för att säkerställa responsivitet
+                    setTimeout(() => {
+                        window.dispatchEvent(new Event('resize'));
+                    }, 100);
                 };
                 
                 qrImage.onerror = function() {
@@ -769,7 +803,6 @@
                 };
                 
                 qrImage.src = qrApiUrl;
-                qrImage.style.display = 'block';
                 
             } catch (error) {
                 console.error('QR-generering fel:', error);
