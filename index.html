@@ -2,12 +2,12 @@
 <html lang="sv">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
     <title>BIK Karlskoga - Café Kassa & Swish QR</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
         * {
             box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
         }
         
         body {
@@ -89,16 +89,15 @@
             padding: 15px 10px;
             text-align: center;
             cursor: pointer;
-            transition: all 0.3s;
+            transition: all 0.2s;
             touch-action: manipulation;
             user-select: none;
         }
         
-        .menu-item:hover, .menu-item:active {
-            background: #2a5298;
-            color: white;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(42, 82, 152, 0.3);
+        .menu-item:active {
+            background: #2a5298 !important;
+            color: white !important;
+            transform: scale(0.95);
         }
         
         .menu-item .name {
@@ -113,8 +112,8 @@
             font-size: 16px;
         }
         
-        .menu-item:hover .price, .menu-item:active .price {
-            color: white;
+        .menu-item:active .price {
+            color: white !important;
         }
         
         .order-summary {
@@ -143,9 +142,11 @@
             color: white;
             border: none;
             border-radius: 4px;
-            padding: 4px 8px;
+            padding: 6px 10px;
             cursor: pointer;
-            font-size: 12px;
+            font-size: 14px;
+            min-width: 30px;
+            min-height: 30px;
         }
         
         .total {
@@ -167,14 +168,19 @@
         
         .btn {
             flex: 1;
-            padding: 12px 20px;
+            padding: 15px 20px;
             font-size: 16px;
             border: none;
             border-radius: 8px;
             cursor: pointer;
-            transition: all 0.3s;
+            transition: all 0.2s;
             touch-action: manipulation;
             user-select: none;
+            min-height: 50px;
+        }
+        
+        .btn:active {
+            transform: scale(0.95);
         }
         
         .btn-primary {
@@ -182,17 +188,9 @@
             color: white;
         }
         
-        .btn-primary:hover {
-            background: #218838;
-        }
-        
         .btn-secondary {
             background: #6c757d;
             color: white;
-        }
-        
-        .btn-secondary:hover {
-            background: #545b62;
         }
         
         .btn-danger {
@@ -200,8 +198,9 @@
             color: white;
         }
         
-        .btn-danger:hover {
-            background: #c82333;
+        .btn-blue {
+            background: #007bff;
+            color: white;
         }
         
         /* QR-SEKTION */
@@ -222,10 +221,11 @@
         
         input[type="text"], input[type="number"] {
             width: 100%;
-            padding: 12px;
+            padding: 15px;
             border: 2px solid #ddd;
             border-radius: 8px;
             font-size: 16px;
+            min-height: 50px;
         }
         
         input[readonly] {
@@ -242,38 +242,54 @@
             display: none;
         }
         
-        #qrcode {
+        .qr-image {
+            max-width: 100%;
+            width: 300px;
+            height: 300px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
             margin: 20px 0;
         }
         
         .status {
             margin: 10px 0;
-            padding: 10px;
-            border-radius: 5px;
+            padding: 15px;
+            border-radius: 8px;
             text-align: center;
+            font-weight: bold;
             display: none;
         }
         
         .status.success {
             background-color: #d4edda;
             color: #155724;
-            border: 1px solid #c3e6cb;
+            border: 2px solid #c3e6cb;
         }
         
         .status.error {
             background-color: #f8d7da;
             color: #721c24;
-            border: 1px solid #f5c6cb;
+            border: 2px solid #f5c6cb;
         }
         
         .swish-data {
             background-color: #fff3e0;
             padding: 15px;
-            border-radius: 5px;
+            border-radius: 8px;
             margin-top: 15px;
             font-family: monospace;
             font-size: 12px;
             word-break: break-all;
+            text-align: left;
+        }
+        
+        .debug-info {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            font-size: 12px;
+            border: 1px solid #ddd;
         }
     </style>
 </head>
@@ -290,51 +306,51 @@
             <h2>🛒 Kassasystem</h2>
             
             <div class="menu-grid">
-                <div class="menu-item" onclick="addToOrder('Kaffe', 25)">
+                <div class="menu-item" data-name="Kaffe" data-price="25">
                     <div class="name">Kaffe</div>
                     <div class="price">25 kr</div>
                 </div>
-                <div class="menu-item" onclick="addToOrder('Te', 20)">
+                <div class="menu-item" data-name="Te" data-price="20">
                     <div class="name">Te</div>
                     <div class="price">20 kr</div>
                 </div>
-                <div class="menu-item" onclick="addToOrder('Läsk', 30)">
+                <div class="menu-item" data-name="Läsk" data-price="30">
                     <div class="name">Läsk</div>
                     <div class="price">30 kr</div>
                 </div>
-                <div class="menu-item" onclick="addToOrder('Vatten', 15)">
+                <div class="menu-item" data-name="Vatten" data-price="15">
                     <div class="name">Vatten</div>
                     <div class="price">15 kr</div>
                 </div>
-                <div class="menu-item" onclick="addToOrder('Smörgås', 45)">
+                <div class="menu-item" data-name="Smörgås" data-price="45">
                     <div class="name">Smörgås</div>
                     <div class="price">45 kr</div>
                 </div>
-                <div class="menu-item" onclick="addToOrder('Varmkorv', 35)">
+                <div class="menu-item" data-name="Varmkorv" data-price="35">
                     <div class="name">Varmkorv</div>
                     <div class="price">35 kr</div>
                 </div>
-                <div class="menu-item" onclick="addToOrder('Hamburgare', 65)">
+                <div class="menu-item" data-name="Hamburgare" data-price="65">
                     <div class="name">Hamburgare</div>
                     <div class="price">65 kr</div>
                 </div>
-                <div class="menu-item" onclick="addToOrder('Chips', 20)">
+                <div class="menu-item" data-name="Chips" data-price="20">
                     <div class="name">Chips</div>
                     <div class="price">20 kr</div>
                 </div>
-                <div class="menu-item" onclick="addToOrder('Glass', 25)">
+                <div class="menu-item" data-name="Glass" data-price="25">
                     <div class="name">Glass</div>
                     <div class="price">25 kr</div>
                 </div>
-                <div class="menu-item" onclick="addToOrder('Kaka', 30)">
+                <div class="menu-item" data-name="Kaka" data-price="30">
                     <div class="name">Kaka</div>
                     <div class="price">30 kr</div>
                 </div>
-                <div class="menu-item" onclick="addToOrder('Godis', 15)">
+                <div class="menu-item" data-name="Godis" data-price="15">
                     <div class="name">Godis</div>
                     <div class="price">15 kr</div>
                 </div>
-                <div class="menu-item" onclick="addToOrder('Öl (alkoholfri)', 35)">
+                <div class="menu-item" data-name="Öl (alkoholfri)" data-price="35">
                     <div class="name">Öl (alkoholfri)</div>
                     <div class="price">35 kr</div>
                 </div>
@@ -347,8 +363,8 @@
             <div class="total" id="totalAmount">Totalt: 0 kr</div>
             
             <div class="action-buttons">
-                <button class="btn btn-primary" onclick="transferToQR()">💳 Skapa Swish QR</button>
-                <button class="btn btn-danger" onclick="clearOrder()">🗑️ Rensa allt</button>
+                <button class="btn btn-blue" id="transferBtn">💳 Skapa Swish QR</button>
+                <button class="btn btn-danger" id="clearBtn">🗑️ Rensa allt</button>
             </div>
         </div>
 
@@ -365,7 +381,7 @@
                 
                 <div class="form-group">
                     <label for="amount">Belopp (SEK):</label>
-                    <input type="number" id="amount" step="0.01" min="0" placeholder="Fylls i automatiskt från kassan">
+                    <input type="number" id="amount" step="0.01" min="0" placeholder="Fylls i från kassan">
                 </div>
                 
                 <div class="form-group">
@@ -373,7 +389,7 @@
                     <input type="text" id="message" placeholder="t.ex. Bord 12 - BIK Karlskoga" maxlength="70">
                 </div>
                 
-                <button class="btn btn-primary" onclick="generateQR()" style="width: 100%;">
+                <button class="btn btn-primary" id="generateBtn" style="width: 100%;">
                     🔄 Generera QR-kod
                 </button>
             </div>
@@ -382,31 +398,66 @@
             
             <div class="qr-result" id="qrContainer">
                 <h3>Swish QR-kod:</h3>
-                <div id="qrcode"></div>
+                <div id="qrcode">
+                    <img id="qrImage" class="qr-image" style="display: none;" alt="Swish QR-kod">
+                </div>
                 <div class="swish-data" id="swishData"></div>
-                <button class="btn btn-secondary" onclick="downloadQR()" style="margin-top: 15px;">
-                    📥 Ladda ner QR-kod
+                <button class="btn btn-secondary" id="downloadBtn" style="margin-top: 15px;">
+                    📱 Visa/Spara QR-kod
                 </button>
+            </div>
+            
+            <div class="debug-info" id="debugInfo" style="display: none;">
+                <strong>Debug info:</strong><br>
+                <span id="debugText"></span>
             </div>
         </div>
     </div>
 
     <script>
+        // Global variabler
         let currentOrder = [];
-        let qrCodeInstance = null;
         
+        // Visa debug-information
+        function debug(msg) {
+            console.log('DEBUG:', msg);
+            const debugInfo = document.getElementById('debugInfo');
+            const debugText = document.getElementById('debugText');
+            debugText.innerHTML += new Date().toLocaleTimeString() + ': ' + msg + '<br>';
+            debugInfo.style.display = 'block';
+        }
+        
+        // Visa statusmeddelanden
+        function showStatus(message, type = 'success') {
+            const statusEl = document.getElementById('statusMsg');
+            statusEl.textContent = message;
+            statusEl.className = `status ${type}`;
+            statusEl.style.display = 'block';
+            
+            debug(`Status: ${type} - ${message}`);
+            
+            setTimeout(() => {
+                statusEl.style.display = 'none';
+            }, 4000);
+        }
+        
+        // Lägg till produkt i beställning
         function addToOrder(name, price) {
             currentOrder.push({name, price});
             updateOrderDisplay();
             showStatus(`${name} tillagd!`, 'success');
+            debug(`Produkt tillagd: ${name} ${price}kr`);
         }
         
+        // Ta bort produkt från beställning
         function removeFromOrder(index) {
             const removed = currentOrder.splice(index, 1)[0];
             updateOrderDisplay();
             showStatus(`${removed.name} borttagen!`, 'success');
+            debug(`Produkt borttagen: ${removed.name}`);
         }
         
+        // Uppdatera beställningsvisning
         function updateOrderDisplay() {
             const orderSummary = document.getElementById('orderSummary');
             const totalElement = document.getElementById('totalAmount');
@@ -426,7 +477,7 @@
                         <span>${item.name}</span>
                         <span>
                             ${item.price} kr
-                            <button class="remove-btn" onclick="removeFromOrder(${index})">×</button>
+                            <button class="remove-btn" data-index="${index}">×</button>
                         </span>
                     </div>
                 `;
@@ -435,16 +486,22 @@
             
             orderSummary.innerHTML = html;
             totalElement.textContent = `Totalt: ${total} kr`;
+            
+            debug(`Beställning uppdaterad: ${total}kr`);
         }
         
+        // Rensa beställning
         function clearOrder() {
             currentOrder = [];
             updateOrderDisplay();
             document.getElementById('amount').value = '';
+            document.getElementById('message').value = '';
             document.getElementById('qrContainer').style.display = 'none';
             showStatus('Beställning rensad!', 'success');
+            debug('Beställning rensad');
         }
         
+        // Överför till QR-generator
         function transferToQR() {
             const total = currentOrder.reduce((sum, item) => sum + item.price, 0);
             
@@ -453,44 +510,34 @@
                 return;
             }
             
-            // Sätt belopp med trigger för change-event
+            debug(`Överför ${total}kr till QR`);
+            
+            // Sätt belopp
             const amountField = document.getElementById('amount');
             amountField.value = total;
-            amountField.dispatchEvent(new Event('change'));
-            amountField.dispatchEvent(new Event('input'));
             
-            // Skapa automatiskt meddelande baserat på beställning
+            // Skapa meddelande
             const orderText = currentOrder.map(item => item.name).join(', ');
             const message = `BIK Karlskoga - ${orderText}`;
             const messageField = document.getElementById('message');
-            messageField.value = message.substring(0, 70); // Max 70 tecken
-            messageField.dispatchEvent(new Event('change'));
-            messageField.dispatchEvent(new Event('input'));
+            messageField.value = message.substring(0, 70);
             
-            // Visa bekräftelse
-            showStatus(`✅ Belopp ${total} kr överfört till QR-generator!`, 'success');
+            showStatus(`✅ Belopp ${total} kr överfört!`, 'success');
             
-            // På mobil - scrolla till QR-sektionen OCH generera QR automatiskt
+            // På mobil - automatisk QR-generering
             if (window.innerWidth <= 768) {
                 setTimeout(() => {
                     document.querySelector('.section:last-child').scrollIntoView({ 
-                        behavior: 'smooth',
-                        block: 'start'
+                        behavior: 'smooth' 
                     });
-                    
-                    // Generera QR automatiskt på mobil för smidigare flöde
                     setTimeout(() => {
                         generateQR();
                     }, 800);
                 }, 300);
-            } else {
-                // På desktop - bara fokusera på QR-sektionen
-                setTimeout(() => {
-                    document.getElementById('message').focus();
-                }, 300);
             }
         }
         
+        // Generera QR-kod (enkel metod utan externa bibliotek)
         function generateQR() {
             const swishNumber = '1234701777';
             const amount = document.getElementById('amount').value.trim();
@@ -501,181 +548,148 @@
                 return;
             }
             
+            debug(`Genererar QR för ${amount}kr`);
+            
             try {
                 const formattedAmount = parseFloat(amount).toFixed(2).replace('.', ',');
                 const encodedMessage = message ? encodeURIComponent(message) : '';
                 const swishString = `C${swishNumber};${formattedAmount};${encodedMessage};0`;
                 
-                showStatus('Genererar QR-kod...', 'success');
+                debug(`Swish-sträng: ${swishString}`);
                 
+                // Visa Swish-data
                 document.getElementById('swishData').innerHTML = `
                     <strong>Swish-data:</strong><br>
                     ${swishString}
                 `;
                 
-                const qrContainer = document.getElementById('qrcode');
-                qrContainer.innerHTML = '';
+                // Skapa QR-kod via extern service (fungerar alltid)
+                const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&format=png&data=${encodeURIComponent(swishString)}`;
                 
-                // Kontrollera om QRCode biblioteket är laddat
-                if (typeof QRCode === 'undefined') {
-                    throw new Error('QR-kod biblioteket kunde inte laddas');
-                }
+                debug(`QR API URL: ${qrApiUrl}`);
                 
-                // Fallback metod för mobila enheter
-                try {
-                    qrCodeInstance = new QRCode(qrContainer, {
-                        text: swishString,
-                        width: 250,
-                        height: 250,
-                        colorDark: '#000000',
-                        colorLight: '#ffffff',
-                        correctLevel: QRCode.CorrectLevel.H
-                    });
-                    
-                    // Ge tid för QR-koden att genereras
-                    setTimeout(() => {
-                        const hasQR = qrContainer.querySelector('canvas') || qrContainer.querySelector('img');
-                        if (hasQR) {
-                            document.getElementById('qrContainer').style.display = 'block';
-                            showStatus(`✅ QR-kod för ${formattedAmount} SEK genererad!`, 'success');
-                        } else {
-                            // Fallback - använd extern QR-service
-                            generateQRFallback(swishString, formattedAmount);
-                        }
-                    }, 500);
-                    
-                } catch (qrError) {
-                    console.error('QRCode.js fel:', qrError);
-                    generateQRFallback(swishString, formattedAmount);
-                }
-                
-            } catch (error) {
-                console.error('Generellt fel:', error);
-                showStatus('❌ Fel vid generering: ' + error.message, 'error');
-            }
-        }
-        
-        function generateQRFallback(swishString, formattedAmount) {
-            try {
-                showStatus('Använder backup QR-generator...', 'success');
-                
-                const qrContainer = document.getElementById('qrcode');
-                qrContainer.innerHTML = '';
-                
-                // Skapa QR-kod via extern service
-                const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(swishString)}`;
-                
-                const img = document.createElement('img');
-                img.src = qrApiUrl;
-                img.alt = 'Swish QR-kod';
-                img.style.maxWidth = '100%';
-                img.style.border = '1px solid #ddd';
-                img.style.borderRadius = '5px';
-                
-                img.onload = function() {
+                const qrImage = document.getElementById('qrImage');
+                qrImage.onload = function() {
                     document.getElementById('qrContainer').style.display = 'block';
-                    showStatus(`✅ QR-kod för ${formattedAmount} SEK genererad!`, 'success');
+                    showStatus(`✅ QR-kod för ${formattedAmount} SEK klar!`, 'success');
+                    debug('QR-kod laddad framgångsrikt');
                 };
                 
-                img.onerror = function() {
-                    showStatus('❌ Kunde inte skapa QR-kod. Kontrollera internetanslutningen.', 'error');
+                qrImage.onerror = function() {
+                    showStatus('❌ Kunde inte skapa QR-kod. Kontrollera internet.', 'error');
+                    debug('QR-kod misslyckades att ladda');
                 };
                 
-                qrContainer.appendChild(img);
-                
-            } catch (fallbackError) {
-                console.error('Fallback fel:', fallbackError);
-                showStatus('❌ Kunde inte skapa QR-kod med backup-metoden', 'error');
-            }
-        }
-        
-        function downloadQR() {
-            try {
-                const canvas = document.querySelector('#qrcode canvas');
-                const img = document.querySelector('#qrcode img');
-                
-                let dataUrl = '';
-                if (canvas) {
-                    dataUrl = canvas.toDataURL('image/png');
-                } else if (img) {
-                    // För fallback-bilder från extern service
-                    dataUrl = img.src;
-                } else {
-                    showStatus('❌ Ingen QR-kod att ladda ner', 'error');
-                    return;
-                }
-                
-                // Mobil-vänlig nedladdning
-                if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
-                    // På mobila enheter, öppna QR-koden i nytt fönster istället
-                    const newWindow = window.open();
-                    newWindow.document.write(`
-                        <html>
-                            <head><title>BIK Karlskoga Swish QR</title></head>
-                            <body style="margin:0; text-align:center; background:#f0f0f0;">
-                                <h3>BIK Karlskoga Swish QR-kod</h3>
-                                <img src="${dataUrl}" style="max-width:90%; margin:20px;">
-                                <p>Håll ned bilden för att spara</p>
-                            </body>
-                        </html>
-                    `);
-                    showStatus('📱 QR-kod öppnad i nytt fönster', 'success');
-                } else {
-                    // Desktop-nedladdning
-                    const link = document.createElement('a');
-                    const timestamp = new Date().toISOString().slice(0,16).replace(/[:.]/g, '-');
-                    link.download = `bik-karlskoga-swish-${timestamp}.png`;
-                    link.href = dataUrl;
-                    link.click();
-                    showStatus('📥 QR-kod nedladdad!', 'success');
-                }
+                qrImage.src = qrApiUrl;
+                qrImage.style.display = 'block';
                 
             } catch (error) {
-                console.error('Nedladdningsfel:', error);
-                showStatus('❌ Fel vid nedladdning: ' + error.message, 'error');
+                console.error('QR-generering fel:', error);
+                debug(`QR-fel: ${error.message}`);
+                showStatus('❌ Fel vid QR-generering: ' + error.message, 'error');
             }
         }
         
-        function showStatus(message, type = 'success') {
-            const statusEl = document.getElementById('statusMsg');
-            statusEl.textContent = message;
-            statusEl.className = `status ${type}`;
-            statusEl.style.display = 'block';
+        // Visa/spara QR-kod (mobilanpassat)
+        function showQR() {
+            const qrImage = document.getElementById('qrImage');
             
-            setTimeout(() => {
-                statusEl.style.display = 'none';
-            }, 3000);
+            if (!qrImage.src || qrImage.style.display === 'none') {
+                showStatus('❌ Ingen QR-kod att visa', 'error');
+                return;
+            }
+            
+            debug('Visar QR-kod i nytt fönster');
+            
+            // Öppna i nytt fönster (fungerar på alla enheter)
+            const newWindow = window.open('', '_blank');
+            newWindow.document.write(`
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>BIK Karlskoga Swish QR</title>
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    <style>
+                        body { 
+                            margin: 0; 
+                            padding: 20px; 
+                            text-align: center; 
+                            background: #f0f0f0;
+                            font-family: Arial, sans-serif;
+                        }
+                        img { 
+                            max-width: 90%; 
+                            margin: 20px 0;
+                            border: 2px solid #ddd;
+                            border-radius: 10px;
+                            background: white;
+                            padding: 10px;
+                        }
+                        h2 { color: #1e3c72; }
+                        p { color: #666; margin-top: 20px; }
+                        .instructions {
+                            background: white;
+                            padding: 15px;
+                            border-radius: 8px;
+                            margin: 20px;
+                            border: 1px solid #ddd;
+                        }
+                    </style>
+                </head>
+                <body>
+                    <h2>🏒 BIK Karlskoga</h2>
+                    <h3>Swish QR-kod</h3>
+                    <img src="${qrImage.src}" alt="Swish QR-kod">
+                    <div class="instructions">
+                        <p><strong>För att spara bilden:</strong></p>
+                        <p>📱 Håll ned bilden och välj "Spara bild"</p>
+                        <p>💳 Eller scanna direkt med Swish-appen</p>
+                    </div>
+                </body>
+                </html>
+            `);
+            
+            showStatus('📱 QR-kod öppnad i nytt fönster', 'success');
         }
         
-        // Touch-hantering för knappar och felsökning
+        // Event listeners (förenklat)
         document.addEventListener('DOMContentLoaded', function() {
-            const buttons = document.querySelectorAll('.btn');
-            buttons.forEach(button => {
-                button.addEventListener('touchend', function(e) {
-                    e.preventDefault();
+            debug('Sida laddad - BIK Karlskoga v3.0');
+            
+            // Menu items
+            document.querySelectorAll('.menu-item').forEach(item => {
+                item.addEventListener('click', function() {
+                    const name = this.dataset.name;
+                    const price = parseInt(this.dataset.price);
+                    addToOrder(name, price);
                 });
             });
             
-            // Kontrollera om QRCode-biblioteket laddades korrekt
-            if (typeof QRCode === 'undefined') {
-                console.error('QRCode biblioteket kunde inte laddas');
-                showStatus('⚠️ QR-bibliotek laddar... Försök igen om ett ögonblick.', 'error');
-            }
+            // Remove buttons (delegated event)
+            document.addEventListener('click', function(e) {
+                if (e.target.classList.contains('remove-btn')) {
+                    const index = parseInt(e.target.dataset.index);
+                    removeFromOrder(index);
+                }
+            });
+            
+            // Action buttons
+            document.getElementById('transferBtn').addEventListener('click', transferToQR);
+            document.getElementById('clearBtn').addEventListener('click', clearOrder);
+            document.getElementById('generateBtn').addEventListener('click', generateQR);
+            document.getElementById('downloadBtn').addEventListener('click', showQR);
+            
+            // Enter key support
+            document.getElementById('amount').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') generateQR();
+            });
+            
+            document.getElementById('message').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') generateQR();
+            });
+            
+            showStatus('🏒 BIK Karlskoga kassasystem redo!', 'success');
         });
-        
-        // Enter-tangent i belopp-fält
-        document.getElementById('amount').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') generateQR();
-        });
-        
-        document.getElementById('message').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') generateQR();
-        });
-        
-        // Startstatus
-        window.onload = function() {
-            showStatus('🏟️ BIK Karlskoga kassasystem redo!', 'success');
-        };
     </script>
 </body>
 </html>
