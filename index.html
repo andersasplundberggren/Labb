@@ -475,23 +475,6 @@
             }
         }
         
-        .debug-info {
-            background: #f8f9fa;
-            padding: 12px;
-            border-radius: 8px;
-            margin-top: 12px;
-            font-size: 11px;
-            border: 1px solid #ddd;
-        }
-        
-        @media (min-width: 769px) {
-            .debug-info {
-                padding: 15px;
-                margin-top: 15px;
-                font-size: 12px;
-            }
-        }
-        
         /* FULLSKÄRMS QR-OVERLAY */
         .qr-overlay {
             position: fixed;
@@ -595,7 +578,7 @@
     <div class="header">
         <img src="https://sportality.cdn.s8y.se/team-logos/bik1_bik.svg" alt="BIK Karlskoga" class="logo">
         <h1>BIK Karlskoga</h1>
-        <p>Café Kassa & Swish Betalning</p>
+        <p>V2 Café Kassa & Swish Betalning</p>
     </div>
 
     <div class="main-container">
@@ -704,11 +687,6 @@
                     📱 Visa QR Fullskärm
                 </button>
             </div>
-            
-            <div class="debug-info" id="debugInfo" style="display: none;">
-                <strong>Debug info:</strong><br>
-                <span id="debugText"></span>
-            </div>
         </div>
     </div>
 
@@ -729,23 +707,12 @@
         // Global variabler
         let currentOrder = [];
         
-        // Visa debug-information
-        function debug(msg) {
-            console.log('DEBUG:', msg);
-            const debugInfo = document.getElementById('debugInfo');
-            const debugText = document.getElementById('debugText');
-            debugText.innerHTML += new Date().toLocaleTimeString() + ': ' + msg + '<br>';
-            debugInfo.style.display = 'block';
-        }
-        
         // Visa statusmeddelanden
         function showStatus(message, type = 'success') {
             const statusEl = document.getElementById('statusMsg');
             statusEl.textContent = message;
             statusEl.className = `status ${type}`;
             statusEl.style.display = 'block';
-            
-            debug(`Status: ${type} - ${message}`);
             
             setTimeout(() => {
                 statusEl.style.display = 'none';
@@ -757,7 +724,6 @@
             currentOrder.push({name, price});
             updateOrderDisplay();
             showStatus(`${name} tillagd!`, 'success');
-            debug(`Produkt tillagd: ${name} ${price}kr`);
         }
         
         // Ta bort produkt från beställning
@@ -765,7 +731,6 @@
             const removed = currentOrder.splice(index, 1)[0];
             updateOrderDisplay();
             showStatus(`${removed.name} borttagen!`, 'success');
-            debug(`Produkt borttagen: ${removed.name}`);
         }
         
         // Uppdatera beställningsvisning
@@ -797,8 +762,6 @@
             
             orderSummary.innerHTML = html;
             totalElement.textContent = `Totalt: ${total} kr`;
-            
-            debug(`Beställning uppdaterad: ${total}kr`);
         }
         
         // Rensa beställning
@@ -806,10 +769,8 @@
             currentOrder = [];
             updateOrderDisplay();
             document.getElementById('amount').value = '';
-            document.getElementById('message').value = '';
             document.getElementById('qrContainer').style.display = 'none';
             showStatus('Beställning rensad!', 'success');
-            debug('Beställning rensad');
         }
         
         // Överför till QR-generator
@@ -864,14 +825,10 @@
                 return;
             }
             
-            debug(`Genererar QR för ${amount}kr`);
-            
             try {
                 const formattedAmount = parseFloat(amount).toFixed(2).replace('.', ',');
                 const encodedMessage = message ? encodeURIComponent(message) : '';
                 const swishString = `C${swishNumber};${formattedAmount};${encodedMessage};0`;
-                
-                debug(`Swish-sträng: ${swishString}`);
                 
                 // Visa Swish-data
                 document.getElementById('swishData').innerHTML = `
@@ -885,8 +842,6 @@
                 
                 // Skapa QR-kod via extern service (fungerar alltid)
                 const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=${qrSize}x${qrSize}&format=png&data=${encodeURIComponent(swishString)}`;
-                
-                debug(`QR API URL: ${qrApiUrl} (storlek: ${qrSize}x${qrSize})`);
                 
                 const qrImage = document.getElementById('qrImage');
                 
@@ -905,7 +860,6 @@
                     
                     document.getElementById('qrContainer').style.display = 'block';
                     showStatus(`✅ QR-kod för ${formattedAmount} SEK klar!`, 'success');
-                    debug('QR-kod laddad framgångsrikt och responsivitet återställd');
                     
                     // Força en re-layout för att säkerställa responsivitet
                     setTimeout(() => {
@@ -915,14 +869,12 @@
                 
                 qrImage.onerror = function() {
                     showStatus('❌ Kunde inte skapa QR-kod. Kontrollera internet.', 'error');
-                    debug('QR-kod misslyckades att ladda');
                 };
                 
                 qrImage.src = qrApiUrl;
                 
             } catch (error) {
                 console.error('QR-generering fel:', error);
-                debug(`QR-fel: ${error.message}`);
                 showStatus('❌ Fel vid QR-generering: ' + error.message, 'error');
             }
         }
@@ -935,8 +887,6 @@
                 showStatus('❌ Ingen QR-kod att visa', 'error');
                 return;
             }
-            
-            debug('Visar QR-kod i fullskärm');
             
             // Kopiera QR-bilden till overlay
             const overlayImage = document.getElementById('qrOverlayImage');
@@ -954,8 +904,6 @@
         
         // Stäng QR-fullskärm
         function closeQRFullscreen() {
-            debug('Stänger QR-fullskärm');
-            
             const overlay = document.getElementById('qrOverlay');
             overlay.style.display = 'none';
             
@@ -967,8 +915,6 @@
         
         // Event listeners (förenklat)
         document.addEventListener('DOMContentLoaded', function() {
-            debug('Sida laddad - BIK Karlskoga v3.0');
-            
             // Menu items
             document.querySelectorAll('.menu-item').forEach(item => {
                 item.addEventListener('click', function() {
