@@ -577,7 +577,7 @@
 <body>
     <div class="header">
         <img src="https://sportality.cdn.s8y.se/team-logos/bik1_bik.svg" alt="BIK Karlskoga" class="logo">
-        <h1>BIK Karlskoga café V3</h1>
+        <h1>BIK Karlskoga café</h1>
         <p>Kassa & Swishbetalning</p>
     </div>
 
@@ -952,13 +952,21 @@
                 message: document.getElementById('message').value || ''
             };
             
-            // Spara kvittot (skulle kunna vara databas i riktigt system)
+            // Spara kvittot både lokalt och för utskrift
             const receipts = JSON.parse(localStorage.getItem('bikReceipts') || '{}');
             receipts[currentReceiptId] = receiptData;
             localStorage.setItem('bikReceipts', JSON.stringify(receipts));
             
-            // Skapa QR-kod för kvittot
-            const receiptUrl = window.location.origin + window.location.pathname + '?receipt=' + currentReceiptId;
+            // Koda kvittodata till base64 för QR-koden
+            const receiptJson = JSON.stringify(receiptData);
+            const encodedReceipt = btoa(encodeURIComponent(receiptJson));
+            
+            // Skapa URL med embedded kvittodata
+            const currentUrl = window.location.href.split('?')[0];
+            const receiptUrl = currentUrl + '?receiptData=' + encodedReceipt;
+            
+            console.log('Kvitto URL:', receiptUrl); // För debugging
+            
             const receiptQrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&format=png&data=${encodeURIComponent(receiptUrl)}`;
             
             const receiptQrImage = document.getElementById('receiptQrImage');
