@@ -577,7 +577,7 @@
 <body>
     <div class="header">
         <img src="https://sportality.cdn.s8y.se/team-logos/bik1_bik.svg" alt="BIK Karlskoga" class="logo">
-        <h1>BIK Karlskoga café</h1>
+        <h1>BIK Karlskoga café V3</h1>
         <p>Kassa & Swishbetalning</p>
     </div>
 
@@ -660,9 +660,33 @@
                     <img id="qrImage" class="qr-image" style="display: none;" alt="Swish QR-kod">
                 </div>
                 <div class="swish-data" id="swishData"></div>
-                <button class="btn btn-secondary" id="downloadBtn" style="margin-top: 15px;">
-                    📱 Visa QR Fullskärm
-                </button>
+                <div class="qr-actions" style="margin-top: 15px; display: flex; flex-direction: column; gap: 10px;">
+                    <button class="btn btn-secondary" id="downloadBtn">
+                        📱 Visa QR Fullskärm
+                    </button>
+                    <button class="btn btn-primary" id="paymentReceivedBtn" style="display: none;">
+                        ✅ Betalning mottagen - Skapa kvitto
+                    </button>
+                </div>
+            </div>
+            
+            <!-- KVITTO QR-KOD -->
+            <div class="qr-result" id="receiptContainer" style="display: none;">
+                <h3>🧾 Kvitto QR-kod:</h3>
+                <div id="receiptQrcode">
+                    <img id="receiptQrImage" class="qr-image" style="display: none;" alt="Kvitto QR-kod">
+                </div>
+                <p style="color: #666; font-size: 14px; margin: 10px 0;">
+                    Kunden scannar denna QR-kod för att få sitt kvitto
+                </p>
+                <div class="receipt-actions" style="display: flex; flex-direction: column; gap: 10px; margin-top: 15px;">
+                    <button class="btn btn-secondary" id="showReceiptFullscreenBtn">
+                        📱 Visa kvitto-QR fullskärm
+                    </button>
+                    <button class="btn btn-blue" id="printReceiptBtn">
+                        🖨️ Skriv ut papperskvitto
+                    </button>
+                </div>
             </div>
             
             <div class="qr-form">
@@ -707,6 +731,7 @@
     <script>
         // Global variabler
         let currentOrder = [];
+        let currentReceiptId = null;
         
         // Visa statusmeddelanden
         function showStatus(message, type = 'success') {
@@ -771,6 +796,8 @@
             updateOrderDisplay();
             document.getElementById('amount').value = '';
             document.getElementById('qrContainer').style.display = 'none';
+            document.getElementById('receiptContainer').style.display = 'none';
+            currentReceiptId = null;
             showStatus('Beställning rensad!', 'success');
         }
         
@@ -876,6 +903,9 @@
                     document.getElementById('qrContainer').style.display = 'block';
                     showStatus(`✅ QR-kod för ${formattedAmount} SEK klar!`, 'success');
                     
+                    // Visa "Betalning mottagen"-knappen
+                    document.getElementById('paymentReceivedBtn').style.display = 'block';
+                    
                     // Scrolla till QR-koden som nu visas överst
                     const qrContainer = document.getElementById('qrContainer');
                     qrContainer.scrollIntoView({ 
@@ -901,7 +931,237 @@
             }
         }
         
-        // Visa QR-kod i fullskärm
+        // Skapa kvitto efter betalning
+        function createReceipt() {
+            if (currentOrder.length === 0) {
+                showStatus('Ingen beställning att skapa kvitto för!', 'error');
+                return;
+            }
+            
+            // Generera unikt kvitto-ID
+            currentReceiptId = 'receipt_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+            
+            // Skapa kvittodata
+            const receiptData = {
+                id: currentReceiptId,
+                timestamp: new Date().toLocaleString('sv-SE'),
+                items: [...currentOrder],
+                total: currentOrder.reduce((sum, item) => sum + item.price, 0),
+                swishNumber: '1234701777',
+                companyName: 'BIK Karlskoga café',
+                message: document.getElementById('message').value || ''
+            };
+            
+            // Spara kvittot (skulle kunna vara databas i riktigt system)
+            const receipts = JSON.parse(localStorage.getItem('bikReceipts') || '{}');
+            receipts[currentReceiptId] = receiptData;
+            localStorage.setItem('bikReceipts', JSON.stringify(receipts));
+            
+            // Skapa QR-kod för kvittot
+            const receiptUrl = window.location.origin + window.location.pathname + '?receipt=' + currentReceiptId;
+            const receiptQrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&format=png&data=${encodeURIComponent(receiptUrl)}`;
+            
+            const receiptQrImage = document.getElementById('receiptQrImage');
+            
+            receiptQrImage.onload = function() {
+                this.style.display = 'block';
+                document.getElementById('receiptContainer').style.display = 'block';
+                showStatus('✅ Kvitto-QR-kod skapad!', 'success');
+                
+                // Scrolla till kvitto-QR-koden
+                document.getElementById('receiptContainer').scrollIntoView({ 
+                    behavior: 'smooth', 
+                    block: 'center' 
+                });
+            };
+            
+            receiptQrImage.onerror = function() {
+                showStatus('❌ Kunde inte skapa kvitto-QR-kod', 'error');
+            };
+            
+            receiptQrImage.src = receiptQrApiUrl;
+        }
+        
+        // Visa kvitto-QR i fullskärm
+        function showReceiptQRFullscreen() {
+            const receiptQrImage = document.getElementById('receiptQrImage');
+            
+            if (!receiptQrImage.src || receiptQrImage.style.display === 'none') {
+                showStatus('❌ Ingen kvitto-QR-kod att visa', 'error');
+                return;
+            }
+            
+            // Kopiera QR-bilden till overlay
+            const overlayImage = document.getElementById('qrOverlayImage');
+            overlayImage.src = receiptQrImage.src;
+            
+            // Ändra overlay-texten för kvitto
+            const overlayContent = document.querySelector('.qr-overlay h2');
+            const overlayText = document.querySelector('.qr-overlay-text');
+            const originalTitle = overlayContent.textContent;
+            const originalText = overlayText.innerHTML;
+            
+            overlayContent.textContent = '🧾 Kvitto - BIK Karlskoga';
+            overlayText.innerHTML = '<p><strong>Kunden scannar för kvitto</strong></p><p>Tryck var som helst för att stänga</p>';
+            
+            // Visa overlay
+            const overlay = document.getElementById('qrOverlay');
+            overlay.style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+            
+            // Återställ originaltext när overlay stängs
+            const originalCloseFunction = closeQRFullscreen;
+            window.closeQRFullscreen = function() {
+                originalCloseFunction();
+                overlayContent.textContent = originalTitle;
+                overlayText.innerHTML = originalText;
+                window.closeQRFullscreen = originalCloseFunction;
+            };
+            
+            showStatus('🧾 Kvitto-QR i fullskärm', 'success');
+        }
+        
+        // Skriv ut kvitto
+        function printReceipt() {
+            if (!currentReceiptId) {
+                showStatus('❌ Inget kvitto att skriva ut', 'error');
+                return;
+            }
+            
+            const receipts = JSON.parse(localStorage.getItem('bikReceipts') || '{}');
+            const receiptData = receipts[currentReceiptId];
+            
+            if (!receiptData) {
+                showStatus('❌ Kvittodata hittades inte', 'error');
+                return;
+            }
+            
+            // Skapa utskriftsfönster
+            const printWindow = window.open('', '_blank');
+            const printContent = `
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>Kvitto - BIK Karlskoga</title>
+                    <style>
+                        body { font-family: 'Courier New', monospace; margin: 20px; max-width: 300px; }
+                        .header { text-align: center; margin-bottom: 20px; }
+                        .line { border-top: 1px dashed #000; margin: 10px 0; }
+                        .item { display: flex; justify-content: space-between; margin: 5px 0; }
+                        .total { font-weight: bold; font-size: 1.2em; margin-top: 10px; }
+                        .footer { text-align: center; margin-top: 20px; font-size: 0.9em; }
+                    </style>
+                </head>
+                <body>
+                    <div class="header">
+                        <h2>🏒 BIK KARLSKOGA CAFÉ</h2>
+                        <p>Swish: 1234701777</p>
+                        <p>${receiptData.timestamp}</p>
+                    </div>
+                    
+                    <div class="line"></div>
+                    
+                    ${receiptData.items.map(item => 
+                        `<div class="item">
+                            <span>${item.name}</span>
+                            <span>${item.price} kr</span>
+                        </div>`
+                    ).join('')}
+                    
+                    <div class="line"></div>
+                    
+                    <div class="item total">
+                        <span>TOTALT:</span>
+                        <span>${receiptData.total} kr</span>
+                    </div>
+                    
+                    ${receiptData.message ? `
+                        <div class="line"></div>
+                        <p><strong>Meddelande:</strong> ${receiptData.message}</p>
+                    ` : ''}
+                    
+                    <div class="footer">
+                        <p>Tack för ditt köp!</p>
+                        <p>Kvitto-ID: ${receiptData.id}</p>
+                    </div>
+                </body>
+                </html>
+            `;
+            
+            printWindow.document.write(printContent);
+            printWindow.document.close();
+            
+            // Vänta lite och skriv sedan ut
+            setTimeout(() => {
+                printWindow.print();
+                printWindow.close();
+            }, 500);
+            
+            showStatus('🖨️ Kvitto skickat till skrivare', 'success');
+        }
+        
+        // Visa kvitto (för kund som scannar QR-kod)
+        function displayReceipt() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const receiptId = urlParams.get('receipt');
+            
+            if (!receiptId) return;
+            
+            const receipts = JSON.parse(localStorage.getItem('bikReceipts') || '{}');
+            const receiptData = receipts[receiptId];
+            
+            if (!receiptData) {
+                document.body.innerHTML = `
+                    <div style="text-align: center; padding: 20px; font-family: Arial, sans-serif;">
+                        <h2>❌ Kvitto hittades inte</h2>
+                        <p>Detta kvitto är inte längre tillgängligt.</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            // Visa kvitto för kund
+            document.body.innerHTML = `
+                <div style="max-width: 400px; margin: 0 auto; padding: 20px; font-family: Arial, sans-serif;">
+                    <div style="text-align: center; margin-bottom: 30px;">
+                        <img src="https://sportality.cdn.s8y.se/team-logos/bik1_bik.svg" alt="BIK Karlskoga" style="width: 80px; height: 80px;">
+                        <h1 style="color: #1e3c72; margin: 10px 0;">BIK Karlskoga café</h1>
+                        <p style="color: #666;">🧾 Digitalt kvitto</p>
+                    </div>
+                    
+                    <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px;">
+                        <h3 style="margin: 0 0 15px 0; color: #1e3c72;">Köpdetaljer</h3>
+                        <p><strong>Datum:</strong> ${receiptData.timestamp}</p>
+                        <p><strong>Kvitto-ID:</strong> ${receiptData.id}</p>
+                        ${receiptData.message ? `<p><strong>Meddelande:</strong> ${receiptData.message}</p>` : ''}
+                    </div>
+                    
+                    <div style="background: white; border: 2px solid #dee2e6; border-radius: 10px; padding: 20px; margin-bottom: 20px;">
+                        <h3 style="margin: 0 0 15px 0; color: #1e3c72;">Produkter</h3>
+                        ${receiptData.items.map(item => 
+                            `<div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee;">
+                                <span>${item.name}</span>
+                                <span style="font-weight: bold;">${item.price} kr</span>
+                            </div>`
+                        ).join('')}
+                        
+                        <div style="display: flex; justify-content: space-between; padding: 15px 0; font-size: 1.2em; font-weight: bold; color: #1e3c72; border-top: 2px solid #1e3c72; margin-top: 10px;">
+                            <span>TOTALT:</span>
+                            <span>${receiptData.total} kr</span>
+                        </div>
+                    </div>
+                    
+                    <div style="background: #e7f3ff; padding: 15px; border-radius: 10px; text-align: center; margin-bottom: 20px;">
+                        <p style="margin: 0; color: #1e3c72;"><strong>Betalt via Swish: 1234701777</strong></p>
+                    </div>
+                    
+                    <div style="text-align: center; color: #666; font-size: 0.9em;">
+                        <p>Tack för ditt köp! 🏒</p>
+                        <p>Välkommen åter till BIK Karlskoga café</p>
+                    </div>
+                </div>
+            `;
+        }
         function showQRFullscreen() {
             const qrImage = document.getElementById('qrImage');
             
@@ -937,6 +1197,13 @@
         
         // Event listeners
         document.addEventListener('DOMContentLoaded', function() {
+            // Kolla om det är en kvitto-URL
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('receipt')) {
+                displayReceipt();
+                return;
+            }
+            
             // Menu items
             document.querySelectorAll('.menu-item').forEach(item => {
                 item.addEventListener('click', function() {
@@ -959,6 +1226,11 @@
             document.getElementById('clearBtn').addEventListener('click', clearOrder);
             document.getElementById('generateBtn').addEventListener('click', generateQR);
             document.getElementById('downloadBtn').addEventListener('click', showQRFullscreen);
+            
+            // Nya kvitto-knappar
+            document.getElementById('paymentReceivedBtn').addEventListener('click', createReceipt);
+            document.getElementById('showReceiptFullscreenBtn').addEventListener('click', showReceiptQRFullscreen);
+            document.getElementById('printReceiptBtn').addEventListener('click', printReceipt);
             
             // QR-overlay event listeners
             document.getElementById('qrOverlay').addEventListener('click', closeQRFullscreen);
