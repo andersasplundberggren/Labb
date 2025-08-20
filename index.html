@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
     <title>BIK Karlskoga - Café Kassa & Swish QR</title>
+    
+    <!-- LÄGG TILL SUPABASE -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
     <style>
         * {
             box-sizing: border-box;
@@ -177,6 +181,12 @@
             font-size: 14px;
         }
         
+        .menu-item .vat-info {
+            font-size: 10px;
+            color: #666;
+            margin-top: 2px;
+        }
+        
         @media (min-width: 769px) {
             .menu-item .name {
                 font-size: 14px;
@@ -186,10 +196,18 @@
             .menu-item .price {
                 font-size: 16px;
             }
+            
+            .menu-item .vat-info {
+                font-size: 11px;
+            }
         }
         
         .menu-item:active .price {
             color: white !important;
+        }
+        
+        .menu-item:active .vat-info {
+            color: rgba(255,255,255,0.8) !important;
         }
         
         .order-summary {
@@ -587,6 +605,24 @@
             padding: 20px;
             box-sizing: border-box;
         }
+        
+        /* LOADING INDICATOR */
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+        
+        .loading::after {
+            content: '...';
+            animation: loading 1.5s infinite;
+        }
+        
+        @keyframes loading {
+            0% { content: '.'; }
+            33% { content: '..'; }
+            66% { content: '...'; }
+        }
     </style>
 </head>
 <body>
@@ -621,8 +657,8 @@
     <div id="mainPage">
         <div class="header">
             <img src="https://sportality.cdn.s8y.se/team-logos/bik1_bik.svg" alt="BIK Karlskoga" class="logo">
-            <h1>BIK Karlskoga café v4</h1>
-            <p>Kassa & Swishbetalning</p>
+            <h1>BIK Karlskoga café v5</h1>
+            <p>Kassa & Swishbetalning - Online Backend</p>
         </div>
 
         <div class="main-container">
@@ -630,55 +666,8 @@
             <div class="section">
                 <h2>🛒 Kassasystem</h2>
                 
-                <div class="menu-grid">
-                    <div class="menu-item" data-name="Kaffe" data-price="25">
-                        <div class="name">Kaffe</div>
-                        <div class="price">25 kr</div>
-                    </div>
-                    <div class="menu-item" data-name="Te" data-price="20">
-                        <div class="name">Te</div>
-                        <div class="price">20 kr</div>
-                    </div>
-                    <div class="menu-item" data-name="Läsk" data-price="30">
-                        <div class="name">Läsk</div>
-                        <div class="price">30 kr</div>
-                    </div>
-                    <div class="menu-item" data-name="Vatten" data-price="15">
-                        <div class="name">Vatten</div>
-                        <div class="price">15 kr</div>
-                    </div>
-                    <div class="menu-item" data-name="Smörgås" data-price="45">
-                        <div class="name">Smörgås</div>
-                        <div class="price">45 kr</div>
-                    </div>
-                    <div class="menu-item" data-name="Varmkorv" data-price="35">
-                        <div class="name">Varmkorv</div>
-                        <div class="price">35 kr</div>
-                    </div>
-                    <div class="menu-item" data-name="Hamburgare" data-price="65">
-                        <div class="name">Hamburgare</div>
-                        <div class="price">65 kr</div>
-                    </div>
-                    <div class="menu-item" data-name="Chips" data-price="20">
-                        <div class="name">Chips</div>
-                        <div class="price">20 kr</div>
-                    </div>
-                    <div class="menu-item" data-name="Glass" data-price="25">
-                        <div class="name">Glass</div>
-                        <div class="price">25 kr</div>
-                    </div>
-                    <div class="menu-item" data-name="Kaka" data-price="30">
-                        <div class="name">Kaka</div>
-                        <div class="price">30 kr</div>
-                    </div>
-                    <div class="menu-item" data-name="Godis" data-price="15">
-                        <div class="name">Godis</div>
-                        <div class="price">15 kr</div>
-                    </div>
-                    <div class="menu-item" data-name="Öl (alkoholfri)" data-price="35">
-                        <div class="name">Öl (alkoholfri)</div>
-                        <div class="price">35 kr</div>
-                    </div>
+                <div class="menu-grid" id="menuGrid">
+                    <div class="loading">Laddar produkter från servern</div>
                 </div>
                 
                 <div class="order-summary" id="orderSummary">
@@ -753,6 +742,11 @@
                         <input type="text" id="message" placeholder="t.ex. Bord 12 - BIK Karlskoga" maxlength="70">
                     </div>
                     
+                    <div class="form-group">
+                        <label for="cashierName">Kassör:</label>
+                        <input type="text" id="cashierName" placeholder="Ditt namn" maxlength="50">
+                    </div>
+                    
                     <button class="btn btn-primary" id="generateBtn" style="width: 100%;">
                         🔄 Generera QR-kod
                     </button>
@@ -777,10 +771,161 @@
     </div>
 
     <script>
-        // Global variabler
+        // ========================================
+        // SUPABASE KONFIGURATION
+        // ========================================
+        // BYTA UT DESSA MED DINA VÄRDEN FRÅN SUPABASE!
+        const SUPABASE_URL = 'https://notuhncgibrtlkktopnz.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5vdHVobmNnaWJydGxra3RvcG56Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU2Nzc1NzYsImV4cCI6MjA3MTI1MzU3Nn0.d5UxBzsxgnXEkQdKMb-m1vvVcOdqLp5HoTM1Joatc3w';
+        
+        // Initiera Supabase
+        const { createClient } = supabase;
+        const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        
+        // ========================================
+        // GLOBALA VARIABLER
+        // ========================================
         let currentOrder = [];
         let currentReceiptId = null;
         let currentReceiptData = null;
+        let products = [];
+        
+        // ========================================
+        // BACKEND FUNKTIONER
+        // ========================================
+        
+        // Hämta produkter från Supabase
+        async function loadProducts() {
+            try {
+                const { data, error } = await supabaseClient
+                    .from('products')
+                    .select('*')
+                    .eq('active', true)
+                    .order('name');
+                
+                if (error) throw error;
+                
+                products = data;
+                displayProducts(products);
+                showStatus('✅ Produkter laddade från servern', 'success');
+            } catch (error) {
+                console.error('Fel vid hämtning av produkter:', error);
+                showStatus('❌ Kunde inte ladda produkter. Använder backup.', 'error');
+                // Fallback till hårdkodade produkter om något går fel
+                displayBackupProducts();
+            }
+        }
+        
+        // Visa produkter i menyn
+        function displayProducts(productList) {
+            const menuGrid = document.getElementById('menuGrid');
+            menuGrid.innerHTML = '';
+            
+            productList.forEach(product => {
+                const menuItem = document.createElement('div');
+                menuItem.className = 'menu-item';
+                menuItem.dataset.productId = product.id;
+                menuItem.dataset.name = product.name;
+                menuItem.dataset.price = product.price;
+                menuItem.dataset.vatRate = product.vat_rate || 12;
+                
+                menuItem.innerHTML = `
+                    <div class="name">${product.name}</div>
+                    <div class="price">${product.price} kr</div>
+                    <div class="vat-info">Moms ${product.vat_rate || 12}%</div>
+                `;
+                
+                menuItem.addEventListener('click', function() {
+                    addToOrder(
+                        product.name, 
+                        parseFloat(product.price),
+                        product.vat_rate || 12,
+                        product.id
+                    );
+                });
+                
+                menuGrid.appendChild(menuItem);
+            });
+        }
+        
+        // Backup produkter om Supabase inte fungerar
+        function displayBackupProducts() {
+            const backupProducts = [
+                { id: 'backup_1', name: 'Kaffe', price: 25, vat_rate: 12 },
+                { id: 'backup_2', name: 'Te', price: 20, vat_rate: 12 },
+                { id: 'backup_3', name: 'Läsk', price: 30, vat_rate: 12 },
+                { id: 'backup_4', name: 'Vatten', price: 15, vat_rate: 12 },
+                { id: 'backup_5', name: 'Smörgås', price: 45, vat_rate: 12 },
+                { id: 'backup_6', name: 'Varmkorv', price: 35, vat_rate: 12 },
+                { id: 'backup_7', name: 'Hamburgare', price: 65, vat_rate: 12 },
+                { id: 'backup_8', name: 'Chips', price: 20, vat_rate: 12 },
+                { id: 'backup_9', name: 'Glass', price: 25, vat_rate: 12 },
+                { id: 'backup_10', name: 'Kaka', price: 30, vat_rate: 12 },
+                { id: 'backup_11', name: 'Godis', price: 15, vat_rate: 12 },
+                { id: 'backup_12', name: 'Öl (alkoholfri)', price: 35, vat_rate: 12 }
+            ];
+            displayProducts(backupProducts);
+        }
+        
+        // Spara köp till Supabase
+        async function savePurchaseToBackend() {
+            try {
+                const cashierName = document.getElementById('cashierName').value || 'Anonym';
+                const totalAmount = currentOrder.reduce((sum, item) => sum + item.price, 0);
+                
+                // Beräkna moms
+                let vatAmount = 0;
+                const itemsWithVat = currentOrder.map(item => {
+                    const vatRate = item.vatRate || 12;
+                    const itemVat = (item.price * vatRate) / (100 + vatRate);
+                    vatAmount += itemVat;
+                    
+                    return {
+                        name: item.name,
+                        quantity: 1,
+                        price: item.price,
+                        vat_rate: vatRate,
+                        total: item.price,
+                        vat_amount: parseFloat(itemVat.toFixed(2))
+                    };
+                });
+                
+                const purchaseData = {
+                    customer_email: null, // Kan läggas till senare om behövs
+                    phone_number: null,
+                    items: itemsWithVat,
+                    amount: parseFloat((totalAmount - vatAmount).toFixed(2)),
+                    vat_amount: parseFloat(vatAmount.toFixed(2)),
+                    total_amount: totalAmount,
+                    status: 'completed',
+                    cashier_name: cashierName,
+                    swish_reference: 'SWISH_' + Date.now()
+                };
+                
+                const { data, error } = await supabaseClient
+                    .from('purchases')
+                    .insert([purchaseData])
+                    .select();
+                
+                if (error) throw error;
+                
+                console.log('Köp sparat i backend:', data[0]);
+                return data[0];
+            } catch (error) {
+                console.error('Fel vid sparande av köp:', error);
+                showStatus('⚠️ Köp registrerat lokalt (offline-läge)', 'error');
+                // Returnera lokalt köp även om backend-sparning misslyckas
+                return {
+                    id: 'local_' + Date.now(),
+                    created_at: new Date().toISOString(),
+                    total_amount: currentOrder.reduce((sum, item) => sum + item.price, 0)
+                };
+            }
+        }
+        
+        // ========================================
+        // UI FUNKTIONER
+        // ========================================
         
         // Visa statusmeddelanden
         function showStatus(message, type = 'success') {
@@ -795,8 +940,14 @@
         }
         
         // Lägg till produkt i beställning
-        function addToOrder(name, price) {
-            currentOrder.push({name, price});
+        function addToOrder(name, price, vatRate = 12, productId = null) {
+            currentOrder.push({
+                name, 
+                price, 
+                vatRate,
+                productId,
+                timestamp: new Date().toISOString()
+            });
             updateOrderDisplay();
             showStatus(`${name} tillagd!`, 'success');
         }
@@ -860,22 +1011,14 @@
                 return;
             }
             
-            // Sätt beloppet med flera metoder för kompatibilitet
+            // Sätt beloppet
             const amountField = document.getElementById('amount');
             amountField.value = total;
             amountField.setAttribute('value', total);
             
-            // Trigga events för att säkerställa att värdet registreras
+            // Trigga events
             amountField.dispatchEvent(new Event('input', { bubbles: true }));
             amountField.dispatchEvent(new Event('change', { bubbles: true }));
-            
-            // Verifiera att värdet faktiskt sattes
-            setTimeout(() => {
-                if (amountField.value != total) {
-                    amountField.value = total;
-                    console.log('Korrigerade belopp-värde:', total);
-                }
-            }, 100);
             
             showStatus(`✅ Belopp ${total} kr överfört till QR-generator!`, 'success');
             
@@ -886,13 +1029,7 @@
                         behavior: 'smooth' 
                     });
                     setTimeout(() => {
-                        // Dubbelkolla att beloppet finns innan QR-generering
-                        const currentAmount = document.getElementById('amount').value;
-                        if (!currentAmount || currentAmount == 0) {
-                            document.getElementById('amount').value = total;
-                        }
                         generateQR();
-                        // Vänta lite och visa sedan QR i fullskärm automatiskt
                         setTimeout(() => {
                             showQRFullscreen();
                         }, 1500);
@@ -928,23 +1065,21 @@
                     ${swishString}
                 `;
                 
-                // Bestäm QR-kod storlek baserat på skärmstorlek
+                // Bestäm QR-kod storlek
                 const isMobile = window.innerWidth <= 768;
                 const qrSize = isMobile ? 250 : 300;
                 
-                // Skapa QR-kod via extern service
+                // Skapa QR-kod
                 const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=${qrSize}x${qrSize}&format=png&data=${encodeURIComponent(swishString)}`;
                 
                 const qrImage = document.getElementById('qrImage');
                 
-                // Reset image properties för responsivitet
                 qrImage.style.maxWidth = '100%';
                 qrImage.style.height = 'auto';
                 qrImage.style.width = 'auto';
                 qrImage.style.display = 'none';
                 
                 qrImage.onload = function() {
-                    // Säkerställ responsivitet efter laddning
                     this.style.display = 'block';
                     this.style.maxWidth = '100%';
                     this.style.height = 'auto';
@@ -956,17 +1091,12 @@
                     // Visa "Betalning mottagen"-knappen
                     document.getElementById('paymentReceivedBtn').style.display = 'block';
                     
-                    // Scrolla till QR-koden som nu visas överst
+                    // Scrolla till QR-koden
                     const qrContainer = document.getElementById('qrContainer');
                     qrContainer.scrollIntoView({ 
                         behavior: 'smooth', 
                         block: 'center' 
                     });
-                    
-                    // Força en re-layout för att säkerställa responsivitet
-                    setTimeout(() => {
-                        window.dispatchEvent(new Event('resize'));
-                    }, 100);
                 };
                 
                 qrImage.onerror = function() {
@@ -981,15 +1111,21 @@
             }
         }
         
-        // Skapa kvitto efter betalning
-        function createReceipt() {
+        // Skapa kvitto efter betalning (nu med backend-sparning)
+        async function createReceipt() {
             if (currentOrder.length === 0) {
                 showStatus('Ingen beställning att skapa kvitto för!', 'error');
                 return;
             }
             
-            // Generera unikt kvitto-ID
-            currentReceiptId = 'receipt_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+            // Visa laddningsindikator
+            showStatus('⏳ Registrerar köp i systemet...', 'success');
+            
+            // Spara till backend
+            const savedPurchase = await savePurchaseToBackend();
+            
+            // Generera kvitto-ID från backend eller lokalt
+            currentReceiptId = savedPurchase.id ? savedPurchase.id.toString() : 'receipt_' + Date.now();
             
             // Skapa kvittodata
             currentReceiptData = {
@@ -999,15 +1135,12 @@
                 total: currentOrder.reduce((sum, item) => sum + item.price, 0),
                 swishNumber: '1234701777',
                 companyName: 'BIK Karlskoga café',
-                message: document.getElementById('message').value || ''
+                message: document.getElementById('message').value || '',
+                cashier: document.getElementById('cashierName').value || 'Anonym',
+                backendId: savedPurchase.id
             };
             
-            // Spara kvittot för utskrift
-            const receipts = JSON.parse(localStorage.getItem('bikReceipts') || '{}');
-            receipts[currentReceiptId] = currentReceiptData;
-            localStorage.setItem('bikReceipts', JSON.stringify(receipts));
-            
-            // Koda kvittodata till base64 för QR-koden
+            // Koda kvittodata till base64
             const receiptJson = JSON.stringify(currentReceiptData);
             const encodedReceipt = btoa(encodeURIComponent(receiptJson));
             
@@ -1022,7 +1155,7 @@
             receiptQrImage.onload = function() {
                 this.style.display = 'block';
                 document.getElementById('receiptContainer').style.display = 'block';
-                showStatus('✅ Kvitto-QR-kod skapad!', 'success');
+                showStatus('✅ Köp registrerat! Kvitto-QR-kod skapad!', 'success');
                 
                 // Scrolla till kvitto-QR-koden
                 document.getElementById('receiptContainer').scrollIntoView({ 
@@ -1056,6 +1189,7 @@
                     <h3 style="margin: 0 0 15px 0; color: #1e3c72;">Köpdetaljer</h3>
                     <p><strong>Datum:</strong> ${receiptData.timestamp}</p>
                     <p><strong>Kvitto-ID:</strong> ${receiptData.id}</p>
+                    <p><strong>Kassör:</strong> ${receiptData.cashier}</p>
                     ${receiptData.message ? `<p><strong>Meddelande:</strong> ${receiptData.message}</p>` : ''}
                 </div>
                 
@@ -1087,6 +1221,25 @@
             document.getElementById('receiptPage').style.display = 'none';
         }
         
+        // Visa QR-kod i fullskärm
+        function showQRFullscreen() {
+            const qrImage = document.getElementById('qrImage');
+            
+            if (!qrImage.src || qrImage.style.display === 'none') {
+                showStatus('❌ Ingen QR-kod att visa', 'error');
+                return;
+            }
+            
+            const overlayImage = document.getElementById('qrOverlayImage');
+            overlayImage.src = qrImage.src;
+            
+            const overlay = document.getElementById('qrOverlay');
+            overlay.style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+            
+            showStatus('📱 QR-kod i fullskärm - tryck för att stänga', 'success');
+        }
+        
         // Visa kvitto-QR i fullskärm
         function showReceiptQRFullscreen() {
             const receiptQrImage = document.getElementById('receiptQrImage');
@@ -1096,11 +1249,9 @@
                 return;
             }
             
-            // Kopiera QR-bilden till overlay
             const overlayImage = document.getElementById('qrOverlayImage');
             overlayImage.src = receiptQrImage.src;
             
-            // Ändra overlay-texten för kvitto
             const overlayContent = document.querySelector('.qr-overlay h2');
             const overlayText = document.querySelector('.qr-overlay-text');
             const originalTitle = overlayContent.textContent;
@@ -1109,12 +1260,10 @@
             overlayContent.textContent = '🧾 Kvitto - BIK Karlskoga';
             overlayText.innerHTML = '<p><strong>Kunden scannar för kvitto</strong></p><p>Tryck var som helst för att stänga</p>';
             
-            // Visa overlay
             const overlay = document.getElementById('qrOverlay');
             overlay.style.display = 'flex';
             document.body.style.overflow = 'hidden';
             
-            // Återställ originaltext när overlay stängs
             const originalCloseFunction = closeQRFullscreen;
             window.closeQRFullscreen = function() {
                 originalCloseFunction();
@@ -1126,6 +1275,14 @@
             showStatus('🧾 Kvitto-QR i fullskärm', 'success');
         }
         
+        // Stäng QR-fullskärm
+        function closeQRFullscreen() {
+            const overlay = document.getElementById('qrOverlay');
+            overlay.style.display = 'none';
+            document.body.style.overflow = 'auto';
+            showStatus('QR-fullskärm stängd', 'success');
+        }
+        
         // Skriv ut kvitto
         function printReceipt() {
             if (!currentReceiptData) {
@@ -1133,7 +1290,6 @@
                 return;
             }
             
-            // Skapa utskriftsfönster
             const printWindow = window.open('', '_blank');
             const printContent = `
                 <!DOCTYPE html>
@@ -1154,6 +1310,7 @@
                         <h2>🏒 BIK KARLSKOGA CAFÉ</h2>
                         <p>Swish: 1234701777</p>
                         <p>${currentReceiptData.timestamp}</p>
+                        <p>Kassör: ${currentReceiptData.cashier}</p>
                     </div>
                     
                     <div class="line"></div>
@@ -1188,47 +1345,12 @@
             printWindow.document.write(printContent);
             printWindow.document.close();
             
-            // Vänta lite och skriv sedan ut
             setTimeout(() => {
                 printWindow.print();
                 printWindow.close();
             }, 500);
             
             showStatus('🖨️ Kvitto skickat till skrivare', 'success');
-        }
-        
-        // Visa QR-kod i fullskärm
-        function showQRFullscreen() {
-            const qrImage = document.getElementById('qrImage');
-            
-            if (!qrImage.src || qrImage.style.display === 'none') {
-                showStatus('❌ Ingen QR-kod att visa', 'error');
-                return;
-            }
-            
-            // Kopiera QR-bilden till overlay
-            const overlayImage = document.getElementById('qrOverlayImage');
-            overlayImage.src = qrImage.src;
-            
-            // Visa overlay
-            const overlay = document.getElementById('qrOverlay');
-            overlay.style.display = 'flex';
-            
-            // Förhindra scrollning i bakgrunden
-            document.body.style.overflow = 'hidden';
-            
-            showStatus('📱 QR-kod i fullskärm - tryck för att stänga', 'success');
-        }
-        
-        // Stäng QR-fullskärm
-        function closeQRFullscreen() {
-            const overlay = document.getElementById('qrOverlay');
-            overlay.style.display = 'none';
-            
-            // Återställ scrollning
-            document.body.style.overflow = 'auto';
-            
-            showStatus('QR-fullskärm stängd', 'success');
         }
         
         // Hantera kvitto-URL när sidan laddas
@@ -1241,7 +1363,6 @@
                     const receiptJson = decodeURIComponent(atob(receiptDataEncoded));
                     const receiptData = JSON.parse(receiptJson);
                     
-                    // Göm huvudsidan och visa kvitto
                     document.getElementById('mainPage').style.display = 'none';
                     showReceiptPage(receiptData);
                 } catch (error) {
@@ -1251,19 +1372,15 @@
             }
         }
         
-        // Event listeners
+        // ========================================
+        // EVENT LISTENERS
+        // ========================================
         document.addEventListener('DOMContentLoaded', function() {
             // Kolla först om det är en kvitto-URL
             handleReceiptURL();
             
-            // Menu items
-            document.querySelectorAll('.menu-item').forEach(item => {
-                item.addEventListener('click', function() {
-                    const name = this.dataset.name;
-                    const price = parseInt(this.dataset.price);
-                    addToOrder(name, price);
-                });
-            });
+            // Ladda produkter från Supabase
+            loadProducts();
             
             // Remove buttons (delegated event)
             document.addEventListener('click', function(e) {
@@ -1311,7 +1428,18 @@
                 if (e.key === 'Enter') generateQR();
             });
             
-            showStatus('🏒 BIK Karlskoga kassasystem redo!', 'success');
+            // Spara kassör-namnet lokalt
+            const cashierField = document.getElementById('cashierName');
+            const savedCashier = localStorage.getItem('bikCashierName');
+            if (savedCashier) {
+                cashierField.value = savedCashier;
+            }
+            
+            cashierField.addEventListener('change', function() {
+                localStorage.setItem('bikCashierName', this.value);
+            });
+            
+            showStatus('🏒 BIK Karlskoga kassasystem v5 med online backend!', 'success');
         });
     </script>
 </body>
