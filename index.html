@@ -902,18 +902,34 @@
                     swish_reference: 'SWISH_' + Date.now()
                 };
                 
+                // Logga data som ska sparas
+                console.log('Försöker spara köp:', purchaseData);
+                
                 const { data, error } = await supabaseClient
                     .from('purchases')
                     .insert([purchaseData])
                     .select();
                 
-                if (error) throw error;
+                if (error) {
+                    console.error('Supabase fel:', error);
+                    console.error('Felmeddelande:', error.message);
+                    console.error('Feldetaljer:', error.details);
+                    console.error('Felhint:', error.hint);
+                    
+                    // Visa mer detaljerat felmeddelande
+                    showStatus(`❌ Kunde inte spara: ${error.message}`, 'error');
+                    throw error;
+                }
                 
-                console.log('Köp sparat i backend:', data[0]);
+                console.log('✅ Köp sparat i backend:', data[0]);
+                showStatus('✅ Köp registrerat i databasen!', 'success');
                 return data[0];
             } catch (error) {
                 console.error('Fel vid sparande av köp:', error);
-                showStatus('⚠️ Köp registrerat lokalt (offline-läge)', 'error');
+                
+                // Visa felmeddelande men fortsätt ändå
+                alert('OBS! Köpet kunde inte sparas online.\n\nFel: ' + error.message + '\n\nKontrollera:\n1. RLS-inställningar i Supabase\n2. Att alla kolumner finns i tabellen\n3. Konsolen för mer info');
+                
                 // Returnera lokalt köp även om backend-sparning misslyckas
                 return {
                     id: 'local_' + Date.now(),
