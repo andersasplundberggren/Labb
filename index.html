@@ -657,8 +657,8 @@
     <div id="mainPage">
         <div class="header">
             <img src="https://sportality.cdn.s8y.se/team-logos/bik1_bik.svg" alt="BIK Karlskoga" class="logo">
-            <h1>BIK Karlskoga café v5</h1>
-            <p>Kassa & Swishbetalning - Online Backend</p>
+            <h1>BIK Karlskoga café</h1>
+            <p>Kassa & Swishbetalning</p>
         </div>
 
         <div class="main-container">
@@ -1199,6 +1199,30 @@
         
         // Visa kvittosida
         function showReceiptPage(receiptData) {
+            // Beräkna moms per momssats
+            const vatGroups = {};
+            let totalVat = 0;
+            let totalExVat = 0;
+            
+            receiptData.items.forEach(item => {
+                const vatRate = item.vatRate || 12;
+                const itemVat = (item.price * vatRate) / (100 + vatRate);
+                const itemExVat = item.price - itemVat;
+                
+                if (!vatGroups[vatRate]) {
+                    vatGroups[vatRate] = {
+                        rate: vatRate,
+                        totalExVat: 0,
+                        totalVat: 0
+                    };
+                }
+                
+                vatGroups[vatRate].totalExVat += itemExVat;
+                vatGroups[vatRate].totalVat += itemVat;
+                totalVat += itemVat;
+                totalExVat += itemExVat;
+            });
+            
             const receiptContent = document.getElementById('receiptContent');
             receiptContent.innerHTML = `
                 <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px;">
@@ -1211,21 +1235,44 @@
                 
                 <div style="background: #fff; border: 2px solid #dee2e6; border-radius: 10px; padding: 20px; margin-bottom: 20px;">
                     <h3 style="margin: 0 0 15px 0; color: #1e3c72;">Produkter</h3>
-                    ${receiptData.items.map(item => 
-                        `<div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee;">
-                            <span>${item.name}</span>
-                            <span style="font-weight: bold;">${item.price} kr</span>
-                        </div>`
-                    ).join('')}
+                    ${receiptData.items.map(item => {
+                        const vatRate = item.vatRate || 12;
+                        const itemVat = (item.price * vatRate) / (100 + vatRate);
+                        const itemExVat = item.price - itemVat;
+                        return `<div style="padding: 8px 0; border-bottom: 1px solid #eee;">
+                            <div style="display: flex; justify-content: space-between;">
+                                <span>${item.name}</span>
+                                <span style="font-weight: bold;">${item.price} kr</span>
+                            </div>
+                            <div style="font-size: 0.85em; color: #666; margin-top: 2px;">
+                                Moms ${vatRate}%: ${itemVat.toFixed(2)} kr
+                            </div>
+                        </div>`;
+                    }).join('')}
                     
-                    <div style="display: flex; justify-content: space-between; padding: 15px 0; font-size: 1.2em; font-weight: bold; color: #1e3c72; border-top: 2px solid #1e3c72; margin-top: 10px;">
-                        <span>TOTALT:</span>
-                        <span>${receiptData.total} kr</span>
+                    <div style="margin-top: 15px; padding-top: 15px; border-top: 2px solid #1e3c72;">
+                        <div style="display: flex; justify-content: space-between; padding: 5px 0;">
+                            <span>Summa ex. moms:</span>
+                            <span>${totalExVat.toFixed(2)} kr</span>
+                        </div>
+                        
+                        ${Object.values(vatGroups).map(group => `
+                            <div style="display: flex; justify-content: space-between; padding: 5px 0; color: #666;">
+                                <span>Moms ${group.rate}%:</span>
+                                <span>${group.totalVat.toFixed(2)} kr</span>
+                            </div>
+                        `).join('')}
+                        
+                        <div style="display: flex; justify-content: space-between; padding: 10px 0 5px 0; font-size: 1.2em; font-weight: bold; color: #1e3c72; border-top: 1px solid #dee2e6; margin-top: 10px;">
+                            <span>ATT BETALA:</span>
+                            <span>${receiptData.total} kr</span>
+                        </div>
                     </div>
                 </div>
                 
                 <div style="background: #e7f3ff; padding: 15px; border-radius: 10px; text-align: center; margin-bottom: 20px;">
                     <p style="margin: 0; color: #1e3c72;"><strong>Betalt via Swish: 1234701777</strong></p>
+                    <p style="margin: 5px 0 0 0; font-size: 0.9em; color: #666;">Org.nr: 123456-7890</p>
                 </div>
             `;
             
@@ -1306,6 +1353,30 @@
                 return;
             }
             
+            // Beräkna moms för utskrift
+            const vatGroups = {};
+            let totalVat = 0;
+            let totalExVat = 0;
+            
+            currentReceiptData.items.forEach(item => {
+                const vatRate = item.vatRate || 12;
+                const itemVat = (item.price * vatRate) / (100 + vatRate);
+                const itemExVat = item.price - itemVat;
+                
+                if (!vatGroups[vatRate]) {
+                    vatGroups[vatRate] = {
+                        rate: vatRate,
+                        totalExVat: 0,
+                        totalVat: 0
+                    };
+                }
+                
+                vatGroups[vatRate].totalExVat += itemExVat;
+                vatGroups[vatRate].totalVat += itemVat;
+                totalVat += itemVat;
+                totalExVat += itemExVat;
+            });
+            
             const printWindow = window.open('', '_blank');
             const printContent = `
                 <!DOCTYPE html>
@@ -1317,6 +1388,7 @@
                         .header { text-align: center; margin-bottom: 20px; }
                         .line { border-top: 1px dashed #000; margin: 10px 0; }
                         .item { display: flex; justify-content: space-between; margin: 5px 0; }
+                        .vat-info { font-size: 0.9em; margin-left: 10px; color: #555; }
                         .total { font-weight: bold; font-size: 1.2em; margin-top: 10px; }
                         .footer { text-align: center; margin-top: 20px; font-size: 0.9em; }
                     </style>
@@ -1331,12 +1403,31 @@
                     
                     <div class="line"></div>
                     
-                    ${currentReceiptData.items.map(item => 
-                        `<div class="item">
-                            <span>${item.name}</span>
-                            <span>${item.price} kr</span>
-                        </div>`
-                    ).join('')}
+                    ${currentReceiptData.items.map(item => {
+                        const vatRate = item.vatRate || 12;
+                        const itemVat = (item.price * vatRate) / (100 + vatRate);
+                        return `<div>
+                            <div class="item">
+                                <span>${item.name}</span>
+                                <span>${item.price} kr</span>
+                            </div>
+                            <div class="vat-info">Moms ${vatRate}%: ${itemVat.toFixed(2)} kr</div>
+                        </div>`;
+                    }).join('')}
+                    
+                    <div class="line"></div>
+                    
+                    <div class="item">
+                        <span>Summa ex. moms:</span>
+                        <span>${totalExVat.toFixed(2)} kr</span>
+                    </div>
+                    
+                    ${Object.values(vatGroups).map(group => `
+                        <div class="item">
+                            <span>Moms ${group.rate}%:</span>
+                            <span>${group.totalVat.toFixed(2)} kr</span>
+                        </div>
+                    `).join('')}
                     
                     <div class="line"></div>
                     
@@ -1353,6 +1444,7 @@
                     <div class="footer">
                         <p>Tack för ditt köp!</p>
                         <p>Kvitto-ID: ${currentReceiptData.id}</p>
+                        <p>Org.nr: 123456-7890</p>
                     </div>
                 </body>
                 </html>
