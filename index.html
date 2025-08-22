@@ -1134,6 +1134,9 @@
                 return;
             }
             
+            // DÖLJ SWISH QR-KODEN FÖRST
+            document.getElementById('qrContainer').style.display = 'none';
+            
             // Visa laddningsindikator
             showStatus('⏳ Registrerar köp i systemet...', 'success');
             
