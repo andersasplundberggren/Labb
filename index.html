@@ -666,7 +666,7 @@
     <div id="mainPage">
         <div class="header">
             <img src="https://sportality.cdn.s8y.se/team-logos/bik1_bik.svg" alt="BIK Karlskoga" class="logo">
-            <h1>BIK Karlskoga café</h1>
+            <h1>BIK Karlskoga café v6</h1>
             <p>Kassa & Swishbetalning</p>
         </div>
 
@@ -774,6 +774,19 @@
             <img id="qrOverlayImage" class="qr-overlay-image" alt="Swish QR-kod">
             <div class="qr-overlay-text">
                 <p><strong>Scanna med Swish-appen</strong></p>
+                <p>Tryck var som helst för att stänga</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- FULLSKÄRMS KVITTO-OVERLAY -->
+    <div class="qr-overlay" id="receiptOverlay" style="display: none;">
+        <div class="qr-overlay-close" id="receiptOverlayClose">×</div>
+        <div class="qr-overlay-content" style="max-width: 500px; max-height: 90vh; overflow-y: auto;">
+            <div id="receiptOverlayContent" style="background: white; border-radius: 15px; padding: 25px; color: black; text-align: left;">
+                <!-- Kvittoinnehåll fylls i via JavaScript -->
+            </div>
+            <div style="margin-top: 20px; color: white; text-align: center;">
                 <p>Tryck var som helst för att stänga</p>
             </div>
         </div>
@@ -1179,7 +1192,110 @@
                 return;
             }
             
-            showReceiptPage(currentReceiptData);
+            showReceiptFullscreen(currentReceiptData);
+        }
+
+        // Visa kvitto i fullskärm
+        function showReceiptFullscreen(receiptData) {
+            const vatGroups = {};
+            let totalVat = 0;
+            let totalExVat = 0;
+            
+            receiptData.items.forEach(item => {
+                const vatRate = item.vatRate || 12;
+                const itemVat = (item.price * vatRate) / (100 + vatRate);
+                const itemExVat = item.price - itemVat;
+                
+                if (!vatGroups[vatRate]) {
+                    vatGroups[vatRate] = {
+                        rate: vatRate,
+                        totalExVat: 0,
+                        totalVat: 0
+                    };
+                }
+                
+                vatGroups[vatRate].totalExVat += itemExVat;
+                vatGroups[vatRate].totalVat += itemVat;
+                totalVat += itemVat;
+                totalExVat += itemExVat;
+            });
+            
+            const receiptOverlayContent = document.getElementById('receiptOverlayContent');
+            receiptOverlayContent.innerHTML = `
+                <div class="receipt-header">
+                    <img src="https://sportality.cdn.s8y.se/team-logos/bik1_bik.svg" alt="BIK Karlskoga" class="receipt-logo">
+                    <h3 style="margin: 0 0 10px 0; color: #1e3c72; font-size: 1.5em;">BIK KARLSKOGA CAFÉ</h3>
+                    <p style="margin: 0; color: #666; font-weight: bold;">🧾 KVITTO</p>
+                </div>
+                
+                <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px;">
+                    <h3 style="margin: 0 0 15px 0; color: #1e3c72;">Köpdetaljer</h3>
+                    <p><strong>Datum:</strong> ${receiptData.timestamp}</p>
+                    <p><strong>Kvitto-ID:</strong> ${receiptData.id}</p>
+                    <p><strong>Kassör:</strong> ${receiptData.cashier}</p>
+                    ${receiptData.message ? `<p><strong>Meddelande:</strong> ${receiptData.message}</p>` : ''}
+                </div>
+                
+                <div style="background: #fff; border: 2px solid #dee2e6; border-radius: 10px; padding: 20px; margin-bottom: 20px;">
+                    <h3 style="margin: 0 0 15px 0; color: #1e3c72;">Produkter</h3>
+                    ${receiptData.items.map(item => {
+                        const vatRate = item.vatRate || 12;
+                        const itemVat = (item.price * vatRate) / (100 + vatRate);
+                        return `<div style="padding: 8px 0; border-bottom: 1px solid #eee;">
+                            <div style="display: flex; justify-content: space-between;">
+                                <span>${item.name}</span>
+                                <span style="font-weight: bold;">${item.price} kr</span>
+                            </div>
+                            <div style="font-size: 0.85em; color: #666; margin-top: 2px;">
+                                Moms ${vatRate}%: ${itemVat.toFixed(2)} kr
+                            </div>
+                        </div>`;
+                    }).join('')}
+                    
+                    <div style="margin-top: 15px; padding-top: 15px; border-top: 2px solid #1e3c72;">
+                        <div style="display: flex; justify-content: space-between; padding: 5px 0;">
+                            <span>Summa ex. moms:</span>
+                            <span>${totalExVat.toFixed(2)} kr</span>
+                        </div>
+                        
+                        ${Object.values(vatGroups).map(group => `
+                            <div style="display: flex; justify-content: space-between; padding: 5px 0; color: #666;">
+                                <span>Moms ${group.rate}%:</span>
+                                <span>${group.totalVat.toFixed(2)} kr</span>
+                            </div>
+                        `).join('')}
+                        
+                        <div style="display: flex; justify-content: space-between; padding: 10px 0 5px 0; font-size: 1.2em; font-weight: bold; color: #1e3c72; border-top: 1px solid #dee2e6; margin-top: 10px;">
+                            <span>ATT BETALA:</span>
+                            <span>${receiptData.total} kr</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div style="background: #e7f3ff; padding: 15px; border-radius: 10px; text-align: center; margin-bottom: 20px;">
+                    <p style="margin: 0; color: #1e3c72;"><strong>Betalt via Swish: 1234701777</strong></p>
+                    <p style="margin: 5px 0 0 0; font-size: 0.9em; color: #666;">Org.nr: 123456-7890</p>
+                </div>
+                
+                <div style="text-align: center; color: #666; font-size: 0.9em; margin-top: 20px;">
+                    <p>Tack för ditt köp! 🏒</p>
+                    <p>Välkommen åter till BIK Karlskoga café</p>
+                </div>
+            `;
+            
+            const overlay = document.getElementById('receiptOverlay');
+            overlay.style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+            
+            showStatus('👁️ Kvittoförhandsvisning i fullskärm', 'success');
+        }
+
+        // Stäng kvitto-fullskärm
+        function closeReceiptFullscreen() {
+            const overlay = document.getElementById('receiptOverlay');
+            overlay.style.display = 'none';
+            document.body.style.overflow = 'auto';
+            showStatus('Förhandsvisning stängd', 'success');
         }
         
         // Visa kvittosida
@@ -1544,9 +1660,19 @@
                 closeQRFullscreen();
             });
             
+            // Kvitto-overlay event listeners
+            document.getElementById('receiptOverlay').addEventListener('click', closeReceiptFullscreen);
+            document.getElementById('receiptOverlayClose').addEventListener('click', function(e) {
+                e.stopPropagation();
+                closeReceiptFullscreen();
+            });
+            
             document.addEventListener('keydown', function(e) {
                 if (e.key === 'Escape' && document.getElementById('qrOverlay').style.display === 'flex') {
                     closeQRFullscreen();
+                }
+                if (e.key === 'Escape' && document.getElementById('receiptOverlay').style.display === 'flex') {
+                    closeReceiptFullscreen();
                 }
                 if (e.key === 'Escape' && document.getElementById('receiptPage').style.display === 'block') {
                     hideReceipt();
