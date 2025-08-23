@@ -605,6 +605,21 @@
             padding: 20px;
             box-sizing: border-box;
         }
+
+        /* KVITTO LOGO STYLING */
+        .receipt-logo {
+            width: 60px;
+            height: 60px;
+            filter: brightness(0);  /* Konverterar till svart-vit */
+            margin-bottom: 15px;
+        }
+
+        .receipt-header {
+            text-align: center;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #dee2e6;
+        }
         
         /* LOADING INDICATOR */
         .loading {
@@ -1228,6 +1243,12 @@
             
             const receiptContent = document.getElementById('receiptContent');
             receiptContent.innerHTML = `
+                <div class="receipt-header">
+                    <img src="https://sportality.cdn.s8y.se/team-logos/bik1_bik.svg" alt="BIK Karlskoga" class="receipt-logo">
+                    <h3 style="margin: 0 0 10px 0; color: #1e3c72; font-size: 1.5em;">BIK KARLSKOGA CAFÉ</h3>
+                    <p style="margin: 0; color: #666; font-weight: bold;">🧾 KVITTO</p>
+                </div>
+                
                 <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px;">
                     <h3 style="margin: 0 0 15px 0; color: #1e3c72;">Köpdetaljer</h3>
                     <p><strong>Datum:</strong> ${receiptData.timestamp}</p>
@@ -1387,24 +1408,68 @@
                 <head>
                     <title>Kvitto - BIK Karlskoga</title>
                     <style>
-                        body { font-family: 'Courier New', monospace; margin: 20px; max-width: 300px; }
-                        .header { text-align: center; margin-bottom: 20px; }
-                        .line { border-top: 1px dashed #000; margin: 10px 0; }
-                        .item { display: flex; justify-content: space-between; margin: 5px 0; }
-                        .vat-info { font-size: 0.9em; margin-left: 10px; color: #555; }
-                        .total { font-weight: bold; font-size: 1.2em; margin-top: 10px; }
-                        .footer { text-align: center; margin-top: 20px; font-size: 0.9em; }
+                        @media print {
+                            body { margin: 0; }
+                        }
+                        body { 
+                            font-family: 'Courier New', monospace; 
+                            margin: 20px; 
+                            max-width: 300px; 
+                            font-size: 12px;
+                        }
+                        .header { 
+                            text-align: center; 
+                            margin-bottom: 20px; 
+                            border-bottom: 2px solid #000;
+                            padding-bottom: 15px;
+                        }
+                        .logo {
+                            width: 50px;
+                            height: 50px;
+                            margin-bottom: 10px;
+                        }
+                        .line { 
+                            border-top: 1px dashed #000; 
+                            margin: 10px 0; 
+                        }
+                        .item { 
+                            display: flex; 
+                            justify-content: space-between; 
+                            margin: 5px 0; 
+                        }
+                        .vat-info { 
+                            font-size: 0.9em; 
+                            margin-left: 10px; 
+                            color: #555; 
+                        }
+                        .total { 
+                            font-weight: bold; 
+                            font-size: 1.2em; 
+                            margin-top: 10px; 
+                            border-top: 2px solid #000;
+                            padding-top: 10px;
+                        }
+                        .footer { 
+                            text-align: center; 
+                            margin-top: 20px; 
+                            font-size: 0.9em;
+                            border-top: 1px solid #000;
+                            padding-top: 15px;
+                        }
+                        .company-info {
+                            font-size: 0.8em;
+                            margin-top: 15px;
+                        }
                     </style>
                 </head>
                 <body>
                     <div class="header">
-                        <h2>🏒 BIK KARLSKOGA CAFÉ</h2>
-                        <p>Swish: 1234701777</p>
-                        <p>${currentReceiptData.timestamp}</p>
-                        <p>Kassör: ${currentReceiptData.cashier}</p>
+                        <img src="https://sportality.cdn.s8y.se/team-logos/bik1_bik.svg" alt="BIK Karlskoga" class="logo">
+                        <h2 style="margin: 5px 0;">🏒 BIK KARLSKOGA CAFÉ</h2>
+                        <p style="margin: 5px 0;">KVITTO</p>
+                        <p style="margin: 5px 0;">${currentReceiptData.timestamp}</p>
+                        <p style="margin: 5px 0;">Kassör: ${currentReceiptData.cashier}</p>
                     </div>
-                    
-                    <div class="line"></div>
                     
                     ${currentReceiptData.items.map(item => {
                         const vatRate = item.vatRate || 12;
@@ -1432,8 +1497,6 @@
                         </div>
                     `).join('')}
                     
-                    <div class="line"></div>
-                    
                     <div class="item total">
                         <span>TOTALT:</span>
                         <span>${currentReceiptData.total} kr</span>
@@ -1445,9 +1508,12 @@
                     ` : ''}
                     
                     <div class="footer">
-                        <p>Tack för ditt köp!</p>
-                        <p>Kvitto-ID: ${currentReceiptData.id}</p>
-                        <p>Org.nr: 123456-7890</p>
+                        <p><strong>Tack för ditt köp!</strong></p>
+                        <p>Betalt via Swish: 1234701777</p>
+                        <div class="company-info">
+                            <p>Kvitto-ID: ${currentReceiptData.id}</p>
+                            <p>Org.nr: 123456-7890</p>
+                        </div>
                     </div>
                 </body>
                 </html>
@@ -1459,7 +1525,7 @@
             setTimeout(() => {
                 printWindow.print();
                 printWindow.close();
-            }, 500);
+            }, 1000); // Längre timeout för att hinna ladda loggan
             
             showStatus('🖨️ Kvitto skickat till skrivare', 'success');
         }
